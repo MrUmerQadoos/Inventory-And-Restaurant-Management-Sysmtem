@@ -16,20 +16,20 @@ import { dirname, join } from 'node:path'
 // Installation: npm install --save-dev @iconify/tools @iconify/utils @iconify/json @iconify/iconify
 import { cleanupSVG, importDirectory, isEmptyColor, parseColors, runSVGO } from '@iconify/tools'
 import { getIcons, getIconsCSS, stringToIcon } from '@iconify/utils'
+import riJson from '@iconify/json/json/ri.json'
+import lineMdJson from '@iconify/json/json/line-md.json'
 
 const sources = {
   json: [
-    // Iconify JSON file (@iconify/json is a package name, /json/ is directory where files are, then filename)
-    require.resolve('@iconify/json/json/ri.json'),
+    // Iconify JSON data
+    { filename: 'ri', content: riJson },
 
-    // Custom file with only few icons
+    // Custom file with only a few icons
     {
-      filename: require.resolve('@iconify/json/json/line-md.json'),
+      filename: 'line-md',
+      content: lineMdJson,
       icons: ['home-twotone-alt', 'github', 'document-list', 'document-code', 'image-twotone']
     }
-
-    // Custom JSON file
-    // 'json/gg.json'
   ],
   icons: [
     'bx-basket',
