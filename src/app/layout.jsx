@@ -10,7 +10,7 @@ import NextTopLoader from 'nextjs-toploader'
 import '@/app/globals.css'
 
 // Generated Icon CSS Imports
-import '@assets/iconify-icons/generated-icons.css'
+// import '@assets/iconify-icons/generated-icons.css'
 
 // Importing MUI theme utilities
 import { ThemeProvider, createTheme } from '@mui/material/styles'
