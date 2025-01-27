@@ -1,0 +1,311 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("NEXT_PUBLIC_DATABASE_URL")
+}
+
+model User {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  name          String           // This field is required, so no null values should exist
+  email         String           @unique
+  password      String
+  role          Role
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  orders        Order[]          // One user can have multiple orders
+  bills         Bill[]           // One user can have multiple bills
+  reports       Report[]         // One user can generate multiple reports
+  reservations  Reservation[]    // One user can have multiple reservations
+   checkIns      CheckIn[]        // One user can have multiple check-ins
+}
+
+model Employees {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  designation String
+  salary      Float
+  amountPaid  Float    @default(0)
+  status      String   @default("Unpaid")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model OverheadExpenses {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  amount    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model InventoryItems {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  amount    Int
+  price     Float
+  UnitPrice Float    @default(0) // New field for unit price
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Products {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  amount      Int
+  price       Float
+  actualPrice Float
+  sellingPrice Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+model Item {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  code          String           @unique
+  name          String
+  price         Float
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  orderItems    OrderItem[]      // One item can be in multiple orders (many-to-many through OrderItem)
+}
+
+model Order {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  kotId         String
+  status        OrderStatus
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  totalAmount   Float            // Total of the order
+  waiterName    String           // Waiter's name
+  tableNumber   String           // Table number
+  floor         String           // Floor
+
+userId        String           @db.ObjectId
+
+  // Foreign key
+
+  user          User             @relation(fields: [userId], references: [id])
+
+  items         OrderItem[]      // Many-to-many relation with items through OrderItem
+
+  bill          Bill?            // One order may generate a single bill
+}
+
+model PaymentDetails {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  method            String        // Cash, Card, or Room
+  totalAmount         Float?        // Amount paid in cash
+
+  cashPaid          Float?        // Amount paid in cash
+
+  returnCash        Float?        // Change returned in cash
+  transactionNumber String?       // Transaction number for card payments
+  guestName         String?       // Name of guest (for Room Pay)
+  checkInId         String?       @db.ObjectId // ID of the CheckIn model for Room Pay
+  billId            String        @unique @db.ObjectId
+
+  bill              Bill          @relation(fields: [billId], references: [id], onDelete: Cascade)
+  checkIn           CheckIn?      @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+}
+
+
+model Bill {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  totalAmount  Float          // Total amount for the bill
+  discount     Float?         @default(0.0) // Discount on the bill
+  netAmount    Float          // Net amount after discount
+  gst          Float?         // GST amount
+  serviceTax   Float?         // Service tax amount
+  paymentType  String?        // Cash or Card - Optional field
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Foreign keys
+  userId       String         @db.ObjectId
+  user         User           @relation(fields: [userId], references: [id])
+
+  orderId      String         @unique @db.ObjectId // The related order
+  order        Order          @relation(fields: [orderId], references: [id])
+
+  kotId        String         // KOT ID from the order
+  paymentDetails PaymentDetails? // Relation to payment details
+}
+
+model Report {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  reportType  ReportType
+  totalSales  Float
+  totalKOTs   Int
+  generatedAt DateTime   @default(now())
+
+  // Foreign key
+  userId      String         @db.ObjectId // Admin who generated the report
+  user        User           @relation(fields: [userId], references: [id])
+}
+
+model OrderItem {
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  orderId    String         @db.ObjectId
+  itemId     String         @db.ObjectId
+  quantity   Int
+  unitPrice  Float          // Store price at the time of order
+  totalPrice Float          // Store calculated total (quantity * unitPrice)
+  name       String         // Store the item name
+
+  // Relations
+  order       Order         @relation(fields: [orderId], references: [id])
+  item        Item          @relation(fields: [itemId], references: [id])
+}
+
+// Enum for User roles (Admin and Receptionist)
+enum Role {
+  ADMIN
+  RECEPTIONIST
+}
+
+// Enum for Order status (Pending, Completed)
+enum OrderStatus {
+  PENDING
+  COMPLETED
+}
+
+// Enum for Report types (Daily, Monthly, Annual)
+enum ReportType {
+  DAILY
+  MONTHLY
+  ANNUAL
+}
+
+// Room Model
+// Room Model
+model Room {
+  id             String            @id @default(auto()) @map("_id") @db.ObjectId
+  floor          Floor             // Enum for predefined floors (e.g., Top Floor, Second Floor, etc.)
+  roomName       String            @unique
+  roomType       String            // Example: "Single", "Double", "Suite", etc.
+  roomView       String            // Example: "Sea View", "City View", etc.
+  roomPrice      Float             // Room price per night
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Relations
+  reservationRooms ReservationRoom[]  // Many-to-many relation with reservations
+}
+
+// Reservation Model
+model Reservation {
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  status        ReservationStatus // Status of the reservation
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // Guest Information
+  guestName     String            // Name of the guest staying
+  guestContact  String            // Contact number of the guest
+  note          String?           // Optional note for the reservation
+
+  // Foreign keys
+  userId        String            @db.ObjectId
+
+  // Relations
+  user          User              @relation(fields: [userId], references: [id])
+  reservationRooms ReservationRoom[]  // Many-to-many relation with rooms
+}
+
+// ReservationRoom Model to store room-specific data per reservation and check-in
+model ReservationRoom {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  checkInDate   DateTime     // Check-in date for this room
+  checkOutDate  DateTime     // Check-out date for this room
+  nights        Int          // Number of nights
+  cost          Float        // Total cost for this room
+
+  // Foreign keys
+  reservationId String?      @db.ObjectId  // Make this optional to allow linking directly to CheckIn
+  roomId        String       @db.ObjectId
+  checkInId     String?      @db.ObjectId  // Make this optional
+
+  // Relations
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])  // Optional to link with Reservation
+  room          Room         @relation(fields: [roomId], references: [id])
+  checkIn       CheckIn?     @relation(fields: [checkInId], references: [id])  // Optional to link with CheckIn
+}
+
+model CheckIn {
+  id                String             @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  // Guest Information
+  status        CheckinStatus
+  guestName         String             // Name of the guest checking in
+  guestContact      String             // Contact number of the guest
+  email             String?            // Optional email of the guest
+  cnic              String?            // Optional CNIC/Passport of the guest
+  paymentMethod     String             // Payment method (e.g., "cash", "card")
+  roomPrice         Float?             // Price of the room
+  children          Int?               // Number of children
+  guests            Int                // Number of guests
+  address           String?            // Address of the guest
+  city              String?            // City of the guest
+  country           String?            // Country of the guest
+  company           String?            // Company associated with the guest
+  note              String?            // Optional note for the check-in
+
+  // New Payment Fields
+  totalCost         Float              // Total cost of the stay
+  amountPaid        Float              // Amount paid by the guest
+  pendingAmount     Float              // Pending amount (if any, negative means refund)
+
+  // Foreign keys
+  userId            String             @db.ObjectId
+
+  // Relations
+  user              User               @relation(fields: [userId], references: [id])
+  reservationRooms  ReservationRoom[]  // Many-to-many relation with rooms to keep track of room assignments during check-in
+    paymentDetails    PaymentDetails[]   // Add this relation field
+    minibarItems      MinibarItem[]    // Add this relation
+}
+
+model MinibarItem {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  price             Float
+  checkInId         String        @db.ObjectId
+  checkIn           CheckIn       @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+
+// Enum for floor options
+enum Floor {
+  TOP_FLOOR
+  SECOND_FLOOR
+  THIRD_FLOOR
+  FOURTH_FLOOR
+  GROUND_FLOOR
+}
+
+// Enum for reservation status
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  CHECKED_IN
+  CHECKED_OUT
+}
+
+enum CheckinStatus {
+  PENDING
+  COMPLETED
+}
