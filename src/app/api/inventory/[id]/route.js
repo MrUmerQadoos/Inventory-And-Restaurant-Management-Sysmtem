@@ -1,31 +1,25 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/libs/db/db' // Adjust the path to match your project structure
+import { db } from '@/libs/db/db'
 
+// PUT (Update an inventory item by ID)
 export async function PUT(req, { params }) {
   const { id } = params
   try {
-    const { amount } = await req.json()
+    const { name, amount, price } = await req.json()
 
-    if (amount == null) {
-      return NextResponse.json({ error: 'Amount is required' }, { status: 400 })
+    if (!name || amount == null || price == null) {
+      return NextResponse.json({ error: 'All fields (name, amount, price) are required' }, { status: 400 })
     }
 
-    // Fetch the existing inventory item
-    const existingItem = await db.inventoryItems.findUnique({ where: { id } })
+    const unitPrice = parseFloat(price) / parseInt(amount, 10) // Recalculate unit price
 
-    if (!existingItem) {
-      return NextResponse.json({ error: 'Inventory item not found' }, { status: 404 })
-    }
-
-    // Calculate the new total price
-    const updatedPrice = parseFloat(existingItem.UnitPrice) * parseInt(amount, 10)
-
-    // Update the inventory item
-    const updatedItem = await db.inventoryItems.update({
+    const updatedItem = await db.inventoryItem.update({
       where: { id },
       data: {
+        name,
+        unitPrice,
         amount: parseInt(amount, 10),
-        price: updatedPrice
+        price: parseFloat(price)
       }
     })
 
@@ -40,7 +34,7 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   const { id } = params
   try {
-    const deletedItem = await db.inventoryItems.delete({
+    const deletedItem = await db.inventoryItem.delete({
       where: { id }
     })
 

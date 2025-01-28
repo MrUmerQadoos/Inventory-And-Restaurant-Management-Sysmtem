@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Button,
   Grid,
@@ -14,22 +14,33 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Autocomplete
+  Autocomplete,
+  IconButton
 } from '@mui/material'
+import { Add, Delete, Edit, Print } from '@mui/icons-material'
+import ProductPrintComponent from './ProductPrintComponent'
 
 const ProductPage = () => {
-  const [inventoryItems, setInventoryItems] = useState([]) // Fetch inventory items
-  const [products, setProducts] = useState([]) // Store products
-  const [selectedItem, setSelectedItem] = useState(null) // Selected inventory item
-  const [amount, setAmount] = useState('') // Amount of item
-  const [price, setPrice] = useState('') // Calculated price
-  const [actualPrice, setActualPrice] = useState('') // Manual actual price
-  const [sellingPrice, setSellingPrice] = useState('') // Manual selling price
-  const [loading, setLoading] = useState(false) // Loading state
-  const [editingProduct, setEditingProduct] = useState(null) // For update operation
+  const [inventoryItems, setInventoryItems] = useState([])
+  const [products, setProducts] = useState([])
+  const [productName, setProductName] = useState('')
+  const [selectedItem, setSelectedItem] = useState(null)
+  const [itemAmount, setItemAmount] = useState('')
+  const [addedItems, setAddedItems] = useState([])
+  const [actualPrice, setActualPrice] = useState('')
+  const [sellingPrice, setSellingPrice] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [inventoryWiseAmount, setInventoryWiseAmount] = useState(0)
+
+  const printRef = useRef()
 
   useEffect(() => {
-    // Fetch inventory items
+    const totalPrice = addedItems.reduce((sum, item) => sum + (item.unitPrice * item.amount || 0), 0)
+    setInventoryWiseAmount(totalPrice)
+  }, [addedItems])
+
+  useEffect(() => {
     const fetchInventoryItems = async () => {
       try {
         const response = await fetch('/api/inventory')
@@ -40,7 +51,6 @@ const ProductPage = () => {
       }
     }
 
-    // Fetch products
     const fetchProducts = async () => {
       try {
         const response = await fetch('/api/products')
@@ -55,40 +65,42 @@ const ProductPage = () => {
     fetchProducts()
   }, [])
 
-  useEffect(() => {
-    // Automatically calculate price when selectedItem or amount changes
-    if (selectedItem && amount) {
-      const calculatedPrice = parseFloat(selectedItem.UnitPrice) * parseInt(amount, 10)
-      setPrice(calculatedPrice.toFixed(2)) // Format to 2 decimal places
-    } else {
-      setPrice('')
+  const addItemToProduct = () => {
+    if (!selectedItem || !itemAmount) return
+    const newItem = {
+      id: selectedItem.id,
+      name: selectedItem.name,
+      unitPrice: selectedItem.unitPrice,
+      amount: parseInt(itemAmount, 10)
     }
-  }, [selectedItem, amount])
+    setAddedItems([...addedItems, newItem])
+    setSelectedItem(null)
+    setItemAmount('')
+  }
 
   const handleAddOrUpdateProduct = async event => {
     event.preventDefault()
-    if (!selectedItem || !amount || !actualPrice || !sellingPrice) return
+    if (!productName || addedItems.length === 0 || !actualPrice || !sellingPrice) return
 
     setLoading(true)
     try {
       const productData = {
-        name: selectedItem.name,
-        amount: parseInt(amount, 10),
-        price: parseFloat(price),
+        name: productName,
         actualPrice: parseFloat(actualPrice),
-        sellingPrice: parseFloat(sellingPrice)
+        sellingPrice: parseFloat(sellingPrice),
+        inventoryWiseAmount,
+        inventoryItems: addedItems,
+        inventoryUsage: JSON.stringify(addedItems)
       }
 
       let response
       if (editingProduct) {
-        // Update existing product
         response = await fetch(`/api/products/${editingProduct.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productData)
         })
       } else {
-        // Add new product
         response = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -112,15 +124,6 @@ const ProductPage = () => {
     }
   }
 
-  const handleEditProduct = product => {
-    setEditingProduct(product)
-    setSelectedItem(inventoryItems.find(item => item.name === product.name))
-    setAmount(product.amount.toString())
-    setPrice(product.price.toString())
-    setActualPrice(product.actualPrice.toString())
-    setSellingPrice(product.sellingPrice.toString())
-  }
-
   const handleDeleteProduct = async id => {
     try {
       const response = await fetch(`/api/products/${id}`, { method: 'DELETE' })
@@ -132,13 +135,60 @@ const ProductPage = () => {
     }
   }
 
+  const handleEditProduct = product => {
+    setEditingProduct(product)
+    setProductName(product.name)
+    setActualPrice(product.actualPrice.toString())
+    setSellingPrice(product.sellingPrice.toString())
+
+    // If inventoryUsage is a string, parse it. If it's already an object, use it directly.
+    let parsedInventoryUsage = []
+    if (typeof product.inventoryUsage === 'string') {
+      parsedInventoryUsage = JSON.parse(product.inventoryUsage) // Parse if it's a JSON string
+    } else if (Array.isArray(product.inventoryUsage)) {
+      parsedInventoryUsage = product.inventoryUsage // If it's already an array, use it directly
+    }
+
+    // Map inventory usage to the structure you need for addedItems
+    const inventoryItemsForEdit = parsedInventoryUsage.map(item => ({
+      id: item.id,
+      name: item.name,
+      unitPrice: item.unitPrice,
+      amount: item.amount
+    }))
+
+    // Set the addedItems for the edit form
+    setAddedItems(inventoryItemsForEdit)
+  }
+
+  const handlePrint = product => {
+    const printWindow = window.open('', '', 'width=800,height=600')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Product</title>
+          <style>
+            body { font-family: monospace; font-size: 12px; padding: 10px; }
+            .header { text-align: center; }
+          </style>
+        </head>
+        <body>
+          ${printRef.current.innerHTML}
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+    printWindow.close()
+  }
+
   const clearForm = () => {
     setEditingProduct(null)
-    setSelectedItem(null)
-    setAmount('')
-    setPrice('')
+    setProductName('')
     setActualPrice('')
     setSellingPrice('')
+    setAddedItems([])
   }
 
   return (
@@ -148,13 +198,23 @@ const ProductPage = () => {
       </Typography>
       <form onSubmit={handleAddOrUpdateProduct}>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12}>
+            <TextField
+              label='Product Name'
+              type='text'
+              fullWidth
+              value={productName}
+              onChange={e => setProductName(e.target.value)}
+              required
+            />
+          </Grid>
+          <Grid item xs={12}>
             <Autocomplete
               options={inventoryItems}
               getOptionLabel={option => option.name}
               value={selectedItem}
               onChange={(e, value) => setSelectedItem(value)}
-              renderInput={params => <TextField {...params} label='Select Item' required />}
+              renderInput={params => <TextField {...params} label='Select Inventory Item' />}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -162,15 +222,47 @@ const ProductPage = () => {
               label='Amount'
               type='number'
               fullWidth
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              required
-              InputProps={{ readOnly: !!editingProduct }} // Make read-only if editing
+              value={itemAmount}
+              onChange={e => setItemAmount(e.target.value)}
             />
           </Grid>
-
           <Grid item xs={12} sm={6}>
-            <TextField label='Price' type='text' fullWidth value={price} InputProps={{ readOnly: true }} />
+            <Button variant='outlined' onClick={addItemToProduct}>
+              Add Item
+            </Button>
+          </Grid>
+          <Grid item xs={12}>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Item Name</TableCell>
+                    <TableCell>Unit Price</TableCell>
+                    <TableCell>Amount</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {addedItems.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell>{item.unitPrice} PKR</TableCell>
+                      <TableCell>{item.amount || 0}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label='Inventory Wise Amount'
+              type='number'
+              fullWidth
+              value={inventoryWiseAmount}
+              InputProps={{
+                readOnly: true
+              }}
+            />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
@@ -194,61 +286,53 @@ const ProductPage = () => {
           </Grid>
           <Grid item xs={12}>
             <Button variant='contained' color='primary' type='submit' disabled={loading}>
-              {loading ? (
-                <CircularProgress size={24} color='inherit' />
-              ) : editingProduct ? (
-                'Update Product'
-              ) : (
-                'Add Product'
-              )}
+              {loading ? <CircularProgress size={24} /> : 'Save Product'}
             </Button>
-            {editingProduct && (
-              <Button variant='outlined' onClick={clearForm} style={{ marginLeft: '10px' }}>
-                Cancel
-              </Button>
-            )}
           </Grid>
         </Grid>
       </form>
 
-      <TableContainer component={Paper} style={{ marginTop: '20px' }}>
+      <Typography variant='h5' gutterBottom>
+        Product List
+      </Typography>
+      <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Price</TableCell>
+              <TableCell>Product Name</TableCell>
               <TableCell>Actual Price</TableCell>
               <TableCell>Selling Price</TableCell>
-              <TableCell align='right'>Actions</TableCell>
+              <TableCell>Inventory Wise Amount</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {products.map(product => (
               <TableRow key={product.id}>
                 <TableCell>{product.name}</TableCell>
-                <TableCell>{product.amount}</TableCell>
-                <TableCell>{product.price}</TableCell>
-                <TableCell>{product.actualPrice}</TableCell>
-                <TableCell>{product.sellingPrice}</TableCell>
-                <TableCell align='right'>
-                  <Button variant='outlined' onClick={() => handleEditProduct(product)}>
-                    Edit
-                  </Button>
-                  <Button
-                    variant='outlined'
-                    color='error'
-                    onClick={() => handleDeleteProduct(product.id)}
-                    style={{ marginLeft: '10px' }}
-                  >
-                    Delete
-                  </Button>
+                <TableCell>{product.actualPrice} PKR</TableCell>
+                <TableCell>{product.sellingPrice} PKR</TableCell>
+                <TableCell>{product.inventoryWiseAmount} PKR</TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleEditProduct(product)}>
+                    <Edit />
+                  </IconButton>
+                  <IconButton onClick={() => handleDeleteProduct(product.id)}>
+                    <Delete />
+                  </IconButton>
+                  <IconButton onClick={() => handlePrint(product)}>
+                    <Print />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+      {/* Print Preview for the selected product */}
+      <div ref={printRef} style={{ display: 'none' }}>
+        {products.length > 0 && <ProductPrintComponent product={products[0]} />}
+      </div>
     </div>
   )
 }

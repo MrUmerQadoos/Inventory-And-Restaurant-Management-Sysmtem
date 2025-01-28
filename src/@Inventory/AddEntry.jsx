@@ -17,8 +17,10 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle
+  DialogTitle,
+  IconButton
 } from '@mui/material'
+import { Edit, Delete } from '@mui/icons-material'
 
 const AddEntry = () => {
   const [items, setItems] = useState([]) // Store created items
@@ -27,7 +29,6 @@ const AddEntry = () => {
   const [amount, setAmount] = useState('') // Item amount
   const [price, setPrice] = useState('') // Item price
   const [loading, setLoading] = useState(false) // Loading state
-  const [editingItem, setEditingItem] = useState(null) // Track item being edited
   const [open, setOpen] = useState(false) // Dialog state
 
   useEffect(() => {
@@ -38,7 +39,7 @@ const AddEntry = () => {
         const data = await response.json()
         setItems(data)
       } catch (err) {
-        console.error('Error fetching Inventory:', err)
+        console.error('Error fetching inventory:', err)
       }
     }
 
@@ -57,18 +58,14 @@ const AddEntry = () => {
         // Update item
         response = await fetch(`/api/inventory/${itemId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newItem)
         })
       } else {
         // Create item
         response = await fetch('/api/inventory', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newItem)
         })
       }
@@ -95,11 +92,13 @@ const AddEntry = () => {
   }
 
   const handleEdit = item => {
-    setItemId(item.id)
-    setName(item.name)
-    setAmount(item.amount.toString())
-    setPrice(item.price.toString())
-    setOpen(true)
+    if (item) {
+      setItemId(item.id || null) // Ensure id exists
+      setName(item.name || '') // Set name
+      setAmount(item.amount ? item.amount.toString() : '') // Ensure amount is set as a string
+      setPrice(item.price ? item.price.toString() : '') // Ensure price is set as a string
+      setOpen(true) // Open dialog
+    }
   }
 
   const handleDelete = async id => {
@@ -185,17 +184,12 @@ const AddEntry = () => {
                 <TableCell>{item.amount}</TableCell>
                 <TableCell>{item.price}</TableCell>
                 <TableCell align='right'>
-                  <Button variant='outlined' onClick={() => handleEdit(item)}>
-                    Edit
-                  </Button>
-                  <Button
-                    variant='outlined'
-                    color='error'
-                    onClick={() => handleDelete(item.id)}
-                    style={{ marginLeft: '10px' }}
-                  >
-                    Delete
-                  </Button>
+                  <IconButton onClick={() => handleEdit(item)}>
+                    <Edit />
+                  </IconButton>
+                  <IconButton color='error' onClick={() => handleDelete(item.id)}>
+                    <Delete />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}

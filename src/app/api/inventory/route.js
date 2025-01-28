@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/libs/db/db' // Adjust the path to match your project structure
+import { db } from '@/libs/db/db'
 
 // GET all inventory items
 export async function GET() {
   try {
-    const items = await db.inventoryItems.findMany()
+    const items = await db.inventoryItem.findMany()
     return NextResponse.json(items, { status: 200 })
   } catch (error) {
     console.error('Error fetching inventory items:', error)
@@ -18,19 +18,18 @@ export async function POST(req) {
     const { name, amount, price } = await req.json()
 
     if (!name || amount == null || price == null) {
-      return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+      return NextResponse.json({ error: 'All fields (name, amount, price) are required' }, { status: 400 })
     }
 
-    // Calculate the unit price
-    const unitPrice = parseFloat(price) / parseInt(amount, 10)
+    const unitPrice = parseFloat(price) / parseInt(amount, 10) // Calculate unit price
 
     // Create a new inventory item
-    const newItem = await db.inventoryItems.create({
+    const newItem = await db.inventoryItem.create({
       data: {
         name,
+        unitPrice,
         amount: parseInt(amount, 10),
-        price: parseFloat(price),
-        UnitPrice: unitPrice
+        price: parseFloat(price)
       }
     })
 

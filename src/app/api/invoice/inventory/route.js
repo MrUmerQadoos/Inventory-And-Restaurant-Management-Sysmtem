@@ -13,7 +13,7 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Missing startDate or endDate' }, { status: 400 })
     }
 
-    const inventory = await prisma.inventoryItems.findMany({
+    const inventory = await prisma.inventoryItem.findMany({
       where: {
         createdAt: {
           gte: new Date(startDate),

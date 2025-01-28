@@ -44,25 +44,27 @@ model OverheadExpenses {
 }
 
 
-model InventoryItems {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String   @unique
-  amount    Int
-  price     Float
-  UnitPrice Float    @default(0) // New field for unit price
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Products {
+  id                  String          @id @default(auto()) @map("_id") @db.ObjectId
+  name                String
+  actualPrice         Float
+  sellingPrice        Float
+  inventoryWiseAmount        Int
+  inventoryItems      InventoryItem[]  // Keep relation to InventoryItem
+  inventoryUsage      Json             // Store object with item ID and amount
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 }
 
-model Products {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  amount      Int
-  price       Float
-  actualPrice Float
-  sellingPrice Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+model InventoryItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  unitPrice Float
+  amount  Int
+  price  Int
+  product   Products? @relation(fields: [productId], references: [id])
+  productId String?
 }
 
 

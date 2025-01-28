@@ -4,43 +4,68 @@ import { db } from '@/libs/db/db'
 // GET all products
 export async function GET() {
   try {
-    const products = await db.Products.findMany()
+    const products = await db.products.findMany({
+      include: {
+        inventoryItems: true // Fetch related inventory items
+      }
+    })
     return NextResponse.json(products, { status: 200 })
   } catch (error) {
     console.error('Error fetching products:', error)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 }
-
 export async function POST(req) {
   try {
-    const { name, amount, price, actualPrice, sellingPrice } = await req.json()
+    const { name, actualPrice, sellingPrice, inventoryWiseAmount, inventoryItems } = await req.json()
 
-    if (!name || !amount || !price || !actualPrice || !sellingPrice) {
+    if (!name || !actualPrice || !sellingPrice || !inventoryWiseAmount || inventoryItems.length === 0) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
-    // Add product
-    const newProduct = await db.Products.create({
-      data: { name, amount, price, actualPrice, sellingPrice }
-    })
+    // Deduct inventory amounts correctly
+    for (const item of inventoryItems) {
+      const inventoryItem = await db.inventoryItem.findUnique({
+        where: { id: item.id }
+      })
 
-    // Fetch the inventory item
-    const inventoryItem = await db.InventoryItems.findUnique({ where: { name } })
-    if (!inventoryItem) {
-      return NextResponse.json({ error: 'Inventory item not found' }, { status: 404 })
+      if (!inventoryItem || inventoryItem.amount < item.amount) {
+        return NextResponse.json({ error: `Insufficient stock for item: ${item.name}` }, { status: 400 })
+      }
+
+      await db.inventoryItem.update({
+        where: { id: item.id },
+        data: {
+          amount: { decrement: item.amount },
+          price: { decrement: item.amount * item.unitPrice }
+        }
+      })
     }
 
-    // Deduct amount from inventory and recalculate total price
-    const updatedInventory = await db.InventoryItems.update({
-      where: { name },
+    // Store inventoryUsage separately
+    const inventoryUsage = inventoryItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      unitPrice: item.unitPrice,
+      amount: item.amount // Store correct amount
+    }))
+
+    // Create the new product
+    const newProduct = await db.products.create({
       data: {
-        amount: { decrement: amount },
-        price: inventoryItem.UnitPrice * (inventoryItem.amount - amount) // Update total price
-      }
+        name,
+        actualPrice: parseFloat(actualPrice),
+        sellingPrice: parseFloat(sellingPrice),
+        inventoryWiseAmount,
+        inventoryItems: {
+          connect: inventoryItems.map(item => ({ id: item.id }))
+        },
+        inventoryUsage // Store the structured usage
+      },
+      include: { inventoryItems: true }
     })
 
-    return NextResponse.json({ newProduct, updatedInventory }, { status: 201 })
+    return NextResponse.json(newProduct, { status: 201 })
   } catch (error) {
     console.error('Error creating product:', error)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

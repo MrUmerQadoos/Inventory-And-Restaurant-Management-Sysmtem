@@ -5,8 +5,8 @@ const prisma = new PrismaClient()
 // GET: Fetch all inventory items
 export async function GET(req) {
   try {
-    const inventoryItems = await prisma.inventoryItems.findMany()
-    return new Response(JSON.stringify(inventoryItems), { status: 200 })
+    const inventoryItem = await prisma.inventoryItem.findMany()
+    return new Response(JSON.stringify(inventoryItem), { status: 200 })
   } catch (error) {
     return new Response(JSON.stringify({ error: 'Failed to fetch inventory items' }), { status: 500 })
   }
@@ -23,7 +23,7 @@ export async function PATCH(req) {
     }
 
     // Update the inventory item quantity
-    const updatedItem = await prisma.inventoryItems.update({
+    const updatedItem = await prisma.inventoryItem.update({
       where: { id },
       data: {
         amount: {
