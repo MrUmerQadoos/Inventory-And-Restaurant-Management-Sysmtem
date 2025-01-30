@@ -23,34 +23,15 @@ export async function POST(req) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
-    // Deduct inventory amounts correctly
-    for (const item of inventoryItems) {
-      const inventoryItem = await db.inventoryItem.findUnique({
-        where: { id: item.id }
-      })
-
-      if (!inventoryItem || inventoryItem.amount < item.amount) {
-        return NextResponse.json({ error: `Insufficient stock for item: ${item.name}` }, { status: 400 })
-      }
-
-      await db.inventoryItem.update({
-        where: { id: item.id },
-        data: {
-          amount: { decrement: item.amount },
-          price: { decrement: item.amount * item.unitPrice }
-        }
-      })
-    }
-
-    // Store inventoryUsage separately
+    // Store inventoryUsage separately without modifying inventory
     const inventoryUsage = inventoryItems.map(item => ({
       id: item.id,
       name: item.name,
       unitPrice: item.unitPrice,
-      amount: item.amount // Store correct amount
+      amount: item.amount // Store the amount but do not decrement
     }))
 
-    // Create the new product
+    // Create the new product without modifying inventory
     const newProduct = await db.products.create({
       data: {
         name,
@@ -60,7 +41,7 @@ export async function POST(req) {
         inventoryItems: {
           connect: inventoryItems.map(item => ({ id: item.id }))
         },
-        inventoryUsage // Store the structured usage
+        inventoryUsage // Store usage separately
       },
       include: { inventoryItems: true }
     })

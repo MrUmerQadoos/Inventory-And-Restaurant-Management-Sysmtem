@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,7 +23,10 @@ model User {
   reports       Report[]         // One user can generate multiple reports
   reservations  Reservation[]    // One user can have multiple reservations
    checkIns      CheckIn[]        // One user can have multiple check-ins
+   productOrder  ProductOrder[]
 }
+
+
 
 model Employees {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -56,6 +60,23 @@ model Products {
   updatedAt           DateTime        @updatedAt
 }
 
+model ProductOrder {
+  id                String             @id @default(auto()) @map("_id") @db.ObjectId
+  totalAmount       Float              // Total amount for the order
+  receptionistName  String             // Name of the receptionist who placed the order
+  orderItems        Json               // Store order items as JSON (array of product objects with quantity, price, etc.)
+  inventoryUsage    Json               // Store inventory usage details (items used in the order)
+  paymentMethod     String             // Cash or Card
+  cashPaid          Float?             // For cash payments, the amount paid by the customer
+  returnCash        Float?             // For cash payments, the amount to be returned to the customer
+  transactionNumber String?            // For card payments, the transaction number
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  // Foreign relation to User (optional)
+  userId            String?            @db.ObjectId
+  user              User?              @relation(fields: [userId], references: [id])
+}
 
 model InventoryItem {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId

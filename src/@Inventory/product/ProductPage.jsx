@@ -17,7 +17,7 @@ import {
   Autocomplete,
   IconButton
 } from '@mui/material'
-import { Add, Delete, Edit, Print } from '@mui/icons-material'
+import { Delete } from '@mui/icons-material'
 import ProductPrintComponent from './ProductPrintComponent'
 
 const ProductPage = () => {
@@ -35,36 +35,31 @@ const ProductPage = () => {
 
   const printRef = useRef()
 
+  // Calculate inventory wise amount whenever addedItems change
   useEffect(() => {
     const totalPrice = addedItems.reduce((sum, item) => sum + (item.unitPrice * item.amount || 0), 0)
     setInventoryWiseAmount(totalPrice)
   }, [addedItems])
 
+  // Fetch inventory items and products on mount
   useEffect(() => {
-    const fetchInventoryItems = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/inventory')
-        const data = await response.json()
-        setInventoryItems(data)
+        const [inventoryResponse, productResponse] = await Promise.all([
+          fetch('/api/inventory'),
+          fetch('/api/products')
+        ])
+        const [inventoryData, productData] = await Promise.all([inventoryResponse.json(), productResponse.json()])
+        setInventoryItems(inventoryData)
+        setProducts(productData)
       } catch (error) {
-        console.error('Error fetching inventory items:', error)
+        console.error('Error fetching data:', error)
       }
     }
-
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('/api/products')
-        const data = await response.json()
-        setProducts(data)
-      } catch (error) {
-        console.error('Error fetching products:', error)
-      }
-    }
-
-    fetchInventoryItems()
-    fetchProducts()
+    fetchData()
   }, [])
 
+  // Add selected inventory item to product
   const addItemToProduct = () => {
     if (!selectedItem || !itemAmount) return
     const newItem = {
@@ -78,6 +73,7 @@ const ProductPage = () => {
     setItemAmount('')
   }
 
+  // Handle product creation and updates
   const handleAddOrUpdateProduct = async event => {
     event.preventDefault()
     if (!productName || addedItems.length === 0 || !actualPrice || !sellingPrice) return
@@ -110,11 +106,11 @@ const ProductPage = () => {
 
       if (response.ok) {
         const updatedOrNewProduct = await response.json()
-        if (editingProduct) {
-          setProducts(products.map(p => (p.id === editingProduct.id ? updatedOrNewProduct : p)))
-        } else {
-          setProducts([...products, updatedOrNewProduct])
-        }
+        setProducts(prevProducts =>
+          editingProduct
+            ? prevProducts.map(p => (p.id === editingProduct.id ? updatedOrNewProduct : p))
+            : [...prevProducts, updatedOrNewProduct]
+        )
         clearForm()
       }
     } catch (error) {
@@ -124,65 +120,36 @@ const ProductPage = () => {
     }
   }
 
+  // Handle product deletion
   const handleDeleteProduct = async id => {
     try {
       const response = await fetch(`/api/products/${id}`, { method: 'DELETE' })
       if (response.ok) {
-        setProducts(products.filter(product => product.id !== id))
+        setProducts(prevProducts => prevProducts.filter(product => product.id !== id))
       }
     } catch (error) {
       console.error('Error deleting product:', error)
     }
   }
 
+  // Edit existing product
   const handleEditProduct = product => {
     setEditingProduct(product)
     setProductName(product.name)
     setActualPrice(product.actualPrice.toString())
     setSellingPrice(product.sellingPrice.toString())
 
-    // If inventoryUsage is a string, parse it. If it's already an object, use it directly.
-    let parsedInventoryUsage = []
-    if (typeof product.inventoryUsage === 'string') {
-      parsedInventoryUsage = JSON.parse(product.inventoryUsage) // Parse if it's a JSON string
-    } else if (Array.isArray(product.inventoryUsage)) {
-      parsedInventoryUsage = product.inventoryUsage // If it's already an array, use it directly
-    }
-
-    // Map inventory usage to the structure you need for addedItems
-    const inventoryItemsForEdit = parsedInventoryUsage.map(item => ({
+    const inventoryItemsForEdit = JSON.parse(product.inventoryUsage || '[]').map(item => ({
       id: item.id,
       name: item.name,
       unitPrice: item.unitPrice,
       amount: item.amount
     }))
 
-    // Set the addedItems for the edit form
     setAddedItems(inventoryItemsForEdit)
   }
 
-  const handlePrint = product => {
-    const printWindow = window.open('', '', 'width=800,height=600')
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Print Product</title>
-          <style>
-            body { font-family: monospace; font-size: 12px; padding: 10px; }
-            .header { text-align: center; }
-          </style>
-        </head>
-        <body>
-          ${printRef.current.innerHTML}
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
-    printWindow.close()
-  }
-
+  // Clear form after product save
   const clearForm = () => {
     setEditingProduct(null)
     setProductName('')
@@ -259,9 +226,7 @@ const ProductPage = () => {
               type='number'
               fullWidth
               value={inventoryWiseAmount}
-              InputProps={{
-                readOnly: true
-              }}
+              InputProps={{ readOnly: true }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -314,14 +279,8 @@ const ProductPage = () => {
                 <TableCell>{product.sellingPrice} PKR</TableCell>
                 <TableCell>{product.inventoryWiseAmount} PKR</TableCell>
                 <TableCell>
-                  <IconButton onClick={() => handleEditProduct(product)}>
-                    <Edit />
-                  </IconButton>
                   <IconButton onClick={() => handleDeleteProduct(product.id)}>
                     <Delete />
-                  </IconButton>
-                  <IconButton onClick={() => handlePrint(product)}>
-                    <Print />
                   </IconButton>
                 </TableCell>
               </TableRow>
@@ -329,7 +288,8 @@ const ProductPage = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      {/* Print Preview for the selected product */}
+
+      {/* Print Preview */}
       <div ref={printRef} style={{ display: 'none' }}>
         {products.length > 0 && <ProductPrintComponent product={products[0]} />}
       </div>

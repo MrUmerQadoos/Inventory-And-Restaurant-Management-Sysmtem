@@ -1,10 +1,10 @@
-import InvoiceReport from '@/@Inventory/invoces/InvoiceReport'
+import InventoryClosingReport from '@/@Inventory/invoces/InventoryClosingReport'
 import React from 'react'
 
 const page = () => {
   return (
     <div>
-      <InvoiceReport />
+      <InventoryClosingReport />
     </div>
   )
 }
