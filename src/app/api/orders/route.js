@@ -99,7 +99,7 @@ export async function POST(req) {
     }
 
     // **Step 2: Adjust Final Amount**
-    const adjustedFinalTotal = totalAmount - totalInventoryCost + deliveryCharge
+    // const adjustedFinalTotal = totalAmount - totalInventoryCost + deliveryCharge
 
     // **Step 3: Save Order in Database**
     const newOrder = await db.productOrder.create({
@@ -109,7 +109,7 @@ export async function POST(req) {
         orderItems: JSON.stringify(orderItems),
         totalAmount,
         deliveryCharge,
-        finalTotal: adjustedFinalTotal,
+        finalTotal,
         inventoryUsage: JSON.stringify(inventoryUsage),
         paymentDetails: JSON.stringify(paymentDetails),
         createdAt: new Date(timestamp),

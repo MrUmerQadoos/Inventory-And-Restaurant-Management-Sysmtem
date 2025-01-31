@@ -15,23 +15,28 @@ export async function GET() {
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 }
+
 export async function POST(req) {
   try {
-    const { name, actualPrice, sellingPrice, inventoryWiseAmount, inventoryItems } = await req.json()
+    const { name, actualPrice, sellingPrice, inventoryWiseAmount, inventoryItems, expenses } = await req.json()
 
+    // ✅ Validate Required Fields
     if (!name || !actualPrice || !sellingPrice || !inventoryWiseAmount || inventoryItems.length === 0) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
-    // Store inventoryUsage separately without modifying inventory
+    // ✅ Store inventoryUsage separately without modifying inventory
     const inventoryUsage = inventoryItems.map(item => ({
       id: item.id,
       name: item.name,
       unitPrice: item.unitPrice,
-      amount: item.amount // Store the amount but do not decrement
+      amount: item.amount // Store the amount but do not decrement stock
     }))
 
-    // Create the new product without modifying inventory
+    // ✅ Convert Expenses to JSON Format for Storage
+    const expensesData = expenses && expenses.length > 0 ? JSON.stringify(expenses) : '[]'
+
+    // ✅ Create the new product with inventory items and expenses
     const newProduct = await db.products.create({
       data: {
         name,
@@ -39,11 +44,12 @@ export async function POST(req) {
         sellingPrice: parseFloat(sellingPrice),
         inventoryWiseAmount,
         inventoryItems: {
-          connect: inventoryItems.map(item => ({ id: item.id }))
+          connect: inventoryItems.map(item => ({ id: item.id })) // ✅ Connect inventory items
         },
-        inventoryUsage // Store usage separately
+        inventoryUsage, // ✅ Store inventory usage details
+        expenses: expensesData // ✅ Store expenses as JSON
       },
-      include: { inventoryItems: true }
+      include: { inventoryItems: true } // ✅ Ensure related inventory items are returned
     })
 
     return NextResponse.json(newProduct, { status: 201 })

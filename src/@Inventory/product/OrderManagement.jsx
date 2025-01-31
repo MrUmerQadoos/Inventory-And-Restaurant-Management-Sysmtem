@@ -1,6 +1,18 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Grid, Typography, Button, Modal, Box, TextField, CircularProgress, Autocomplete } from '@mui/material'
+import {
+  Grid,
+  Typography,
+  Button,
+  Modal,
+  Box,
+  TextField,
+  CircularProgress,
+  Autocomplete,
+  Paper,
+  List,
+  ListItem
+} from '@mui/material'
 import { useReactToPrint } from 'react-to-print'
 import OrderPrintComponent from './OrderPrintComponent'
 
@@ -149,10 +161,18 @@ const OrderManagement = () => {
 
       alert('Order placed successfully!')
       setOrderToPrint(orderData)
+      setOrderItems([])
+
+      // Fetch the latest orders and update the state
+      const latestOrdersResponse = await fetch('/api/orders')
+      if (latestOrdersResponse.ok) {
+        const latestOrdersData = await latestOrdersResponse.json()
+        setOrders(latestOrdersData.orders)
+      }
+
       setTimeout(() => {
         handlePrintInvoice()
       }, 500)
-      setOrderItems([])
     } catch (error) {
       console.error('Network Error:', error)
       alert('Network error. Please check your internet connection.')
@@ -237,7 +257,6 @@ const OrderManagement = () => {
           <h2 class="invoice-header">BAIT AL NEMA</h2>
           <p class="contact-info">
             Main Gt Rd, Taj Town, Kamoke, Pakistan<br>
-            Mobile: 0315 588 8660, 0309 588 8660<br>
             www.baitalnema.com
           </p>
           <h3>Invoice</h3>
@@ -279,7 +298,6 @@ const OrderManagement = () => {
           <div class="divider"></div>
 
           <p class="total-section">Subtotal: Rs ${orderToPrint.totalAmount.toFixed(2)}</p>
-          <p class="total-section">Waiter Tip: Rs 0.00</p>
           <p class="total-section">Total: Rs ${orderToPrint.finalTotal.toFixed(2)}</p>
           <p class="total-section">Current Due: Rs ${orderToPrint.finalTotal.toFixed(2)}</p>
 
@@ -306,77 +324,112 @@ const OrderManagement = () => {
 
   return (
     <div className='shadow-lg px-6 py-6 rounded-md'>
-      <Typography variant='h4'>Order Management</Typography>
-      <Grid container spacing={6} className='mt-4'>
-        <Grid item xs={12} md={6}>
-          <Typography variant='h6'>Select Product</Typography>
+      <Box sx={{ padding: 4, backgroundColor: '#f4f6f8', borderRadius: 2 }}>
+        {/* Main Title */}
+        <Typography variant='h4' sx={{ marginBottom: 4, textAlign: 'center' }}>
+          Order Management
+        </Typography>
 
-          {/* Autocomplete for selecting product */}
-          <Autocomplete
-            fullWidth
-            value={currentProduct || null}
-            onChange={(event, newValue) => setCurrentProduct(newValue)} // Update the selected product
-            options={filteredProducts}
-            getOptionLabel={option => option.name}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            renderInput={params => (
+        {/* Main Grid Container */}
+        <Grid container spacing={4}>
+          {/* Left Section - Order Management */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ padding: 3, borderRadius: 2 }}>
+              <Typography variant='h6' gutterBottom>
+                Select Product
+              </Typography>
+
+              {/* Autocomplete for selecting product */}
+              <Autocomplete
+                options={filteredProducts}
+                getOptionLabel={option => option.name}
+                value={currentProduct || null}
+                onChange={(event, newValue) => setCurrentProduct(newValue)}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label='Search Products'
+                    variant='outlined'
+                    fullWidth
+                    sx={{ marginBottom: 2 }}
+                    value={searchText}
+                    onChange={e => setSearchText(e.target.value)}
+                  />
+                )}
+              />
+
+              {/* Quantity Input */}
               <TextField
-                {...params}
-                label='Search Products'
+                label='Quantity'
+                type='number'
+                value={quantity}
+                onChange={e => setQuantity(Number(e.target.value))}
                 variant='outlined'
                 fullWidth
-                style={{ marginBottom: '20px' }}
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)} // Handle search text change
+                sx={{ marginBottom: 2 }}
               />
-            )}
-          />
 
-          <TextField
-            label='Quantity'
-            type='number'
-            value={quantity}
-            onChange={e => setQuantity(Number(e.target.value))}
-            variant='outlined'
-            fullWidth
-            style={{ marginBottom: '20px' }}
-          />
+              {/* Add Product Button */}
+              <Button variant='contained' fullWidth sx={{ marginBottom: 3 }} onClick={handleAddProduct}>
+                Add Product
+              </Button>
 
-          <Button variant='contained' color='primary' onClick={handleAddProduct}>
-            Add Product
-          </Button>
+              {/* Order Type Selection */}
+              <Typography variant='h6' gutterBottom>
+                Select Order Type
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, marginBottom: 3 }}>
+                <Button
+                  variant={orderType === 'Dine-in' ? 'contained' : 'outlined'}
+                  onClick={() => setOrderType('Dine-in')}
+                >
+                  Dine-in
+                </Button>
+                <Button
+                  variant={orderType === 'Takeaway' ? 'contained' : 'outlined'}
+                  onClick={() => setOrderType('Takeaway')}
+                >
+                  Takeaway
+                </Button>
+                <Button
+                  variant={orderType === 'Delivery' ? 'contained' : 'outlined'}
+                  onClick={() => setOrderType('Delivery')}
+                >
+                  Delivery (+280 PKR)
+                </Button>
+              </Box>
 
-          <Typography variant='h6'>Select Order Type</Typography>
-          <Button variant={orderType === 'Dine-in' ? 'contained' : 'outlined'} onClick={() => setOrderType('Dine-in')}>
-            Dine-in
-          </Button>
-          <Button
-            variant={orderType === 'Takeaway' ? 'contained' : 'outlined'}
-            onClick={() => setOrderType('Takeaway')}
-          >
-            Takeaway
-          </Button>
-          <Button
-            variant={orderType === 'Delivery' ? 'contained' : 'outlined'}
-            onClick={() => setOrderType('Delivery')}
-          >
-            Delivery (+280 PKR)
-          </Button>
-          <Grid container spacing={2} className='mt-4'>
-            <Grid item xs={12}>
-              <Typography variant='h6'>Order Summary</Typography>
-              {orderItems.length > 0 && (
-                <ul>
-                  {orderItems.map((item, index) => (
-                    <li key={index}>
-                      {item.name} - {item.quantity} x {item.sellingPrice} = {item.totalPrice} PKR
-                      <Button onClick={() => handleRemoveProduct(index)}>❌</Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {/* Order Summary */}
+              <Typography variant='h6' gutterBottom>
+                Order Summary
+              </Typography>
+              <List>
+                {orderItems.length > 0 ? (
+                  orderItems.map((item, index) => (
+                    <ListItem
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: 1
+                      }}
+                    >
+                      <Box>
+                        {item.name} - {item.quantity} x {item.sellingPrice} = {item.totalPrice} PKR
+                      </Box>
+                      <Button color='error' onClick={() => handleRemoveProduct(index)}>
+                        Remove
+                      </Button>
+                    </ListItem>
+                  ))
+                ) : (
+                  <Typography>No items added yet.</Typography>
+                )}
+              </List>
 
-              <Typography variant='body1'>
+              {/* Totals */}
+              <Typography variant='body1' sx={{ marginTop: 2 }}>
                 <strong>Subtotal:</strong> {totalAmount} PKR
               </Typography>
               {orderType === 'Delivery' && (
@@ -384,58 +437,71 @@ const OrderManagement = () => {
                   <strong>Delivery Charges:</strong> 280 PKR
                 </Typography>
               )}
-              <Typography variant='h6'>
+              <Typography variant='h6' sx={{ marginBottom: 2 }}>
                 <strong>Total:</strong> {finalTotal} PKR
               </Typography>
-            </Grid>
-          </Grid>
-          <Grid container spacing={2} className='mt-4'>
-            <Grid item>
-              <Button variant='contained' color='primary' onClick={handleOpenPaymentModal}>
-                Order Place
-              </Button>
-            </Grid>
 
-            {/* ✅ Show Print button only if payment is finalized */}
-            {showPrintButton && (
-              <Grid item>
-                <Button variant='contained' color='secondary' onClick={handlePrintInvoice}>
-                  Print Invoice
+              {/* Buttons */}
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button variant='contained' color='primary' onClick={handleOpenPaymentModal} fullWidth>
+                  Place Order
                 </Button>
-              </Grid>
-            )}
+                {showPrintButton && (
+                  <Button variant='contained' color='secondary' onClick={handlePrintInvoice} fullWidth>
+                    Print Invoice
+                  </Button>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Right Section - Recent Orders */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ padding: 3, borderRadius: 2 }}>
+              <Typography variant='h6' gutterBottom>
+                Recent Orders
+              </Typography>
+              {orders.length === 0 ? (
+                <Typography>No orders yet.</Typography>
+              ) : (
+                <List>
+                  {orders.map(order => (
+                    <ListItem
+                      key={order.id}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        borderBottom: '1px solid #e0e0e0',
+                        paddingBottom: 2,
+                        marginBottom: 2
+                      }}
+                    >
+                      <Typography>
+                        <strong>Invoice #:</strong> {order.invoiceNumber}
+                      </Typography>
+                      <Typography>
+                        <strong>Order Type:</strong> {order.orderType}
+                      </Typography>
+                      <Typography>
+                        <strong>Total:</strong> {order.finalTotal} PKR
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, marginTop: 1 }}>
+                        <Button variant='outlined' color='primary' onClick={() => handlePrintOrder(order)}>
+                          Print
+                        </Button>
+                        <Button variant='contained' color='success'>
+                          Done
+                        </Button>
+                      </Box>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Paper>
           </Grid>
         </Grid>
-      </Grid>
-
-      <Grid item xs={12} md={6}>
-        <Typography variant='h6'>Recent Orders</Typography>
-        {orders.length === 0 ? (
-          <Typography>No orders yet</Typography>
-        ) : (
-          <ul>
-            {orders.map(order => (
-              <li key={order.id} style={{ borderBottom: '1px solid #ccc', padding: '10px 0' }}>
-                <p>
-                  <strong>Invoice #:</strong> {order.invoiceNumber}
-                </p>
-                <p>
-                  <strong>Order Type:</strong> {order.orderType}
-                </p>
-                <p>
-                  <strong>Total:</strong> {order.finalTotal} PKR
-                </p>
-                <Button variant='contained' color='secondary' onClick={() => handlePrintOrder(order)}>
-                  Print
-                </Button>
-                <Button variant='contained' color='primary' style={{ marginLeft: '10px' }}>
-                  Done
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Grid>
+      </Box>
 
       {/* Modal for Payment */}
       <Modal open={openPaymentModal} onClose={handleClosePaymentModal}>

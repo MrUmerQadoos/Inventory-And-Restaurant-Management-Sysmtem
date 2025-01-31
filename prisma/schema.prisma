@@ -53,12 +53,14 @@ model Products {
   name                String
   actualPrice         Float
   sellingPrice        Float
-  inventoryWiseAmount        Int
+  inventoryWiseAmount Int
   inventoryItems      InventoryItem[]  // Keep relation to InventoryItem
   inventoryUsage      Json             // Store object with item ID and amount
+  expenses            Json             // ✅ New Field to Store Expense Details
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 }
+
 
 model ProductOrder {
   id             String    @id @default(auto()) @map("_id") @db.ObjectId

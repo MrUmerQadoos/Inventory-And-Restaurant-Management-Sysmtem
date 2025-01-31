@@ -32,6 +32,9 @@ const ProductPage = () => {
   const [loading, setLoading] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [inventoryWiseAmount, setInventoryWiseAmount] = useState(0)
+  const [expenses, setExpenses] = useState([]) // Store added expenses
+  const [expenseName, setExpenseName] = useState('') // Expense name input
+  const [expensePrice, setExpensePrice] = useState('') // Expense price input
 
   const printRef = useRef()
 
@@ -40,6 +43,14 @@ const ProductPage = () => {
     const totalPrice = addedItems.reduce((sum, item) => sum + (item.unitPrice * item.amount || 0), 0)
     setInventoryWiseAmount(totalPrice)
   }, [addedItems])
+
+  useEffect(() => {
+    const totalInventoryCost = addedItems.reduce((sum, item) => sum + (item.unitPrice * item.amount || 0), 0)
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.price, 0)
+
+    setInventoryWiseAmount(totalInventoryCost)
+    setActualPrice((totalInventoryCost + totalExpenses).toFixed(2)) // ✅ Updated actual price calculation
+  }, [addedItems, expenses])
 
   // Fetch inventory items and products on mount
   useEffect(() => {
@@ -58,6 +69,19 @@ const ProductPage = () => {
     }
     fetchData()
   }, [])
+
+  const handleAddExpense = () => {
+    if (!expenseName || !expensePrice) return
+
+    const newExpense = {
+      name: expenseName,
+      price: parseFloat(expensePrice)
+    }
+
+    setExpenses([...expenses, newExpense])
+    setExpenseName('')
+    setExpensePrice('')
+  }
 
   // Add selected inventory item to product
   const addItemToProduct = () => {
@@ -86,7 +110,8 @@ const ProductPage = () => {
         sellingPrice: parseFloat(sellingPrice),
         inventoryWiseAmount,
         inventoryItems: addedItems,
-        inventoryUsage: JSON.stringify(addedItems)
+        inventoryUsage: JSON.stringify(addedItems),
+        expenses: JSON.stringify(expenses) // ✅ Include Expenses in the API Request
       }
 
       let response
@@ -204,8 +229,9 @@ const ProductPage = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Item Name</TableCell>
-                    <TableCell>Unit Price</TableCell>
-                    <TableCell>Amount</TableCell>
+                    <TableCell>Single Item Price</TableCell>
+                    <TableCell>Item Amount</TableCell>
+                    <TableCell>TotalAmount</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -214,6 +240,7 @@ const ProductPage = () => {
                       <TableCell>{item.name}</TableCell>
                       <TableCell>{item.unitPrice} PKR</TableCell>
                       <TableCell>{item.amount || 0}</TableCell>
+                      <TableCell>{(item.unitPrice * item.amount).toFixed(2)} PKR</TableCell>{' '}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -229,6 +256,54 @@ const ProductPage = () => {
               InputProps={{ readOnly: true }}
             />
           </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label='Expense Name'
+              type='text'
+              fullWidth
+              value={expenseName}
+              onChange={e => setExpenseName(e.target.value)}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label='Expense Price'
+              type='number'
+              fullWidth
+              value={expensePrice}
+              onChange={e => setExpensePrice(e.target.value)}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Button variant='outlined' onClick={handleAddExpense}>
+              Add Expense
+            </Button>
+          </Grid>
+          <Grid item xs={12}>
+            <Typography variant='h6'>Expenses</Typography>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Expense Name</TableCell>
+                    <TableCell>Expense Price</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {expenses.map((expense, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{expense.name}</TableCell>
+                      <TableCell>{expense.price} PKR</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Grid>
+
           <Grid item xs={12} sm={6}>
             <TextField
               label='Actual Price'
