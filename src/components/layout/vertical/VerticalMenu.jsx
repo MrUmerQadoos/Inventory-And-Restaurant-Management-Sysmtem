@@ -71,6 +71,7 @@ const VerticalMenu = ({ scrollMenu }) => {
               <MenuItem href={`/salarymanagement`}>Manage Salary</MenuItem>
               <MenuItem href={`/overhead`}>Overhead Expense</MenuItem>
               <MenuItem href={`/invoice`}>Create Invoice</MenuItem>
+              <MenuItem href={`/productinvoice`}>Product Invoice</MenuItem>
             </SubMenu>
           </>
         )}

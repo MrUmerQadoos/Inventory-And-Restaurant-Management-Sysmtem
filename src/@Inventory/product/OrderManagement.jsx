@@ -1,6 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Grid, Typography, Button, Modal, Box, TextField, CircularProgress, Autocomplete } from '@mui/material'
+import { useReactToPrint } from 'react-to-print'
+import OrderPrintComponent from './OrderPrintComponent'
 
 const modalStyle = {
   position: 'absolute',
@@ -18,6 +20,8 @@ const modalStyle = {
 
 const OrderManagement = () => {
   const [products, setProducts] = useState([]) // Store all products fetched from API
+  const [orders, setOrders] = useState([]) // Store fetched orders
+
   const [orderItems, setOrderItems] = useState([]) // Store items added to the order
   const [currentProduct, setCurrentProduct] = useState(null) // Currently selected product
   const [quantity, setQuantity] = useState(1) // Quantity input
@@ -29,9 +33,23 @@ const OrderManagement = () => {
   const [cashPaid, setCashPaid] = useState('') // For cash payments
   const [transactionNumber, setTransactionNumber] = useState('') // For card payments
   const [finalizeLoading, setFinalizeLoading] = useState(false) // Loading state for payment finalization
+  const [orderToPrint, setOrderToPrint] = useState(null) // Store order details for printing
+  const [showPrintButton, setShowPrintButton] = useState(false) // Track Print button visibility
+
+  const printRef = useRef(null) // ✅ Initialize correctly
+
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current || null, // ✅ Prevent null errors
+    documentTitle: 'Invoice Print',
+    onAfterPrint: () => alert('Invoice Printed Successfully!')
+  })
+
+  const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0) // ✅ Define totalAmount first
+  const deliveryCharge = orderType === 'Delivery' ? 280 : 0
+  const finalTotal = totalAmount + deliveryCharge // ✅ No more ReferenceError
 
   const handleAddProduct = () => {
-    if (!currentProduct || quantity <= 0) return // Validate before adding
+    if (!currentProduct || quantity <= 0) return
 
     const productItem = {
       id: currentProduct.id,
@@ -41,13 +59,17 @@ const OrderManagement = () => {
       totalPrice: currentProduct.sellingPrice * quantity
     }
 
-    setOrderItems([...orderItems, productItem]) // Add the product to the order items
-    setQuantity(1) // Reset quantity after adding product
-    setCurrentProduct(null) // Clear the selected product
+    setOrderItems([...orderItems, productItem])
+    setQuantity(1)
+    setCurrentProduct(null)
   }
 
   const handleOpenPaymentModal = () => {
     setOpenPaymentModal(true) // Open the payment modal
+  }
+
+  const handleRemoveProduct = index => {
+    setOrderItems(prevItems => prevItems.filter((_, i) => i !== index)) // ✅ Removes the selected product
   }
 
   const handleClosePaymentModal = () => {
@@ -55,52 +77,58 @@ const OrderManagement = () => {
   }
 
   const handleFinalizePayment = async () => {
-    setFinalizeLoading(true) // Set loading state for finalize button
+    setFinalizeLoading(true)
 
-    const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0) // Calculate total
+    if (!paymentMethod) {
+      alert('Please select a payment method.')
+      setFinalizeLoading(false)
+      return
+    }
 
     let paymentDetails = {}
     if (paymentMethod === 'Cash') {
       const cashReceived = Number(cashPaid)
-      if (cashReceived < totalAmount) {
+      if (cashReceived < finalTotal) {
         alert('Cash paid is less than the total amount.')
-        setFinalizeLoading(false) // Stop loading
+        setFinalizeLoading(false)
         return
       }
       paymentDetails = {
         method: 'Cash',
         cashPaid: cashReceived,
-        returnCash: cashReceived - totalAmount
+        returnCash: cashReceived - finalTotal
       }
     } else if (paymentMethod === 'Card') {
+      if (!transactionNumber) {
+        alert('Please enter a valid transaction number.')
+        setFinalizeLoading(false)
+        return
+      }
       paymentDetails = {
         method: 'Card',
         transactionNumber
       }
     }
 
-    // Prepare the order data including inventory usage (items used in the order)
-    const inventoryUsage = orderItems.map(item => ({
-      id: item.id, // The inventory item ID
-      name: item.name,
-      unitPrice: item.sellingPrice, // Price for the item
-      amount: item.quantity // Amount used
-    }))
+    const invoiceNumber = Math.floor(1000 + Math.random() * 9000)
 
     const orderData = {
+      invoiceNumber,
+      orderType,
       orderItems: orderItems.map(item => ({
         id: item.id,
+        name: item.name,
         quantity: item.quantity,
         sellingPrice: item.sellingPrice,
-        totalPrice: item.totalPrice,
-        name: item.name
+        totalPrice: item.totalPrice
       })),
       totalAmount,
-      receptionistName: 'Receptionist Name', // Replace with actual receptionist's name
-      inventoryUsage // Include the inventory usage
+      deliveryCharge,
+      finalTotal,
+      paymentDetails,
+      timestamp: new Date().toISOString()
     }
 
-    // Send the order data to the backend
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -111,19 +139,45 @@ const OrderManagement = () => {
       })
 
       const result = await response.json()
-      if (response.ok) {
-        alert('Order placed and inventory updated!')
-      } else {
-        alert(result.error || 'Failed to place the order')
+
+      if (!response.ok) {
+        console.error('Server Error:', result)
+        alert(result.message || 'Failed to place the order.')
+        setFinalizeLoading(false)
+        return
       }
+
+      alert('Order placed successfully!')
+      setOrderToPrint(orderData)
+      setTimeout(() => {
+        handlePrintInvoice()
+      }, 500)
+      setOrderItems([])
     } catch (error) {
-      console.error('Error placing order:', error)
-      alert('Something went wrong while placing the order')
+      console.error('Network Error:', error)
+      alert('Network error. Please check your internet connection.')
     }
 
-    setFinalizeLoading(false) // Reset loading state
-    handleClosePaymentModal() // Close the payment modal
+    setFinalizeLoading(false)
+    setOpenPaymentModal(false)
   }
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('/api/orders') // Fetch all orders
+        if (!response.ok) throw new Error('Failed to fetch orders')
+        const data = await response.json()
+
+        console.log('Fetched Orders:', data.orders) // ✅ Debugging Log
+        setOrders(data.orders) // ✅ Ensure orders are stored in state
+      } catch (error) {
+        console.error('Error fetching orders:', error)
+      }
+    }
+
+    fetchOrders()
+  }, [])
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -143,6 +197,112 @@ const OrderManagement = () => {
   const filteredProducts = products.filter(
     product => product.name.toLowerCase().includes(searchText.toLowerCase()) // Filter products based on search text
   )
+
+  const handlePrintOrder = order => {
+    console.log('Printing Order:', order) // ✅ Debugging Log
+    setOrderToPrint(order)
+    setTimeout(() => {
+      handlePrintInvoice()
+    }, 500)
+  }
+
+  const handlePrintInvoice = () => {
+    if (!orderToPrint) {
+      alert('No order to print')
+      return
+    }
+
+    console.log('Order Being Printed:', orderToPrint) // ✅ Debugging Log
+
+    const invoiceWindow = window.open('', '_blank')
+    if (invoiceWindow) {
+      invoiceWindow.document.write(`
+        <html>
+        <head>
+          <title>Invoice #${orderToPrint.invoiceNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 10px; text-align: center; }
+            h2, h3 { margin: 5px 0; }
+            .invoice-header { font-size: 18px; font-weight: bold; }
+            .contact-info { font-size: 12px; margin-bottom: 10px; }
+            .divider { border-top: 1px solid black; margin: 10px 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; }
+            th, td { border: 1px solid black; padding: 5px; font-size: 12px; }
+            th { background-color: #f2f2f2; }
+            .total-section { margin-top: 10px; font-size: 14px; font-weight: bold; }
+            .footer { margin-top: 20px; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h2 class="invoice-header">BAIT AL NEMA</h2>
+          <p class="contact-info">
+            Main Gt Rd, Taj Town, Kamoke, Pakistan<br>
+            Mobile: 0315 588 8660, 0309 588 8660<br>
+            www.baitalnema.com
+          </p>
+          <h3>Invoice</h3>
+          <p><strong>Invoice No:</strong> ${orderToPrint.invoiceNumber}</p>
+          <p><strong>Date:</strong> ${new Date(orderToPrint.timestamp).toLocaleString()}</p>
+          <p><strong>Customer:</strong> Walk-In Customer</p>
+          <p><strong>Mobile:</strong> -</p>
+
+          <div class="divider"></div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderToPrint.orderItems
+                .map(
+                  (item, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.name}</td>
+                  <td>${item.quantity}</td>
+                  <td>${item.sellingPrice} PKR</td>
+                  <td>${item.totalPrice} PKR</td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+
+          <p class="total-section">Total Items: ${orderToPrint.orderItems.length}</p>
+          <div class="divider"></div>
+
+          <p class="total-section">Subtotal: Rs ${orderToPrint.totalAmount.toFixed(2)}</p>
+          <p class="total-section">Waiter Tip: Rs 0.00</p>
+          <p class="total-section">Total: Rs ${orderToPrint.finalTotal.toFixed(2)}</p>
+          <p class="total-section">Current Due: Rs ${orderToPrint.finalTotal.toFixed(2)}</p>
+
+          <div class="divider"></div>
+
+          <p class="footer">
+            pak twon 0324 8785628
+          </p>
+
+          <p class="total-section">Last Invoice No.: ${orderToPrint.invoiceNumber}</p>
+          <p class="total-section">Last Visit Date: ${new Date(orderToPrint.timestamp).toLocaleString()}</p>
+
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+        </html>
+      `)
+      invoiceWindow.document.close()
+    } else {
+      alert('Failed to open print window. Please allow pop-ups.')
+    }
+  }
 
   return (
     <div className='shadow-lg px-6 py-6 rounded-md'>
@@ -186,6 +346,22 @@ const OrderManagement = () => {
             Add Product
           </Button>
 
+          <Typography variant='h6'>Select Order Type</Typography>
+          <Button variant={orderType === 'Dine-in' ? 'contained' : 'outlined'} onClick={() => setOrderType('Dine-in')}>
+            Dine-in
+          </Button>
+          <Button
+            variant={orderType === 'Takeaway' ? 'contained' : 'outlined'}
+            onClick={() => setOrderType('Takeaway')}
+          >
+            Takeaway
+          </Button>
+          <Button
+            variant={orderType === 'Delivery' ? 'contained' : 'outlined'}
+            onClick={() => setOrderType('Delivery')}
+          >
+            Delivery (+280 PKR)
+          </Button>
           <Grid container spacing={2} className='mt-4'>
             <Grid item xs={12}>
               <Typography variant='h6'>Order Summary</Typography>
@@ -194,17 +370,71 @@ const OrderManagement = () => {
                   {orderItems.map((item, index) => (
                     <li key={index}>
                       {item.name} - {item.quantity} x {item.sellingPrice} = {item.totalPrice} PKR
+                      <Button onClick={() => handleRemoveProduct(index)}>❌</Button>
                     </li>
                   ))}
                 </ul>
               )}
+
+              <Typography variant='body1'>
+                <strong>Subtotal:</strong> {totalAmount} PKR
+              </Typography>
+              {orderType === 'Delivery' && (
+                <Typography variant='body1'>
+                  <strong>Delivery Charges:</strong> 280 PKR
+                </Typography>
+              )}
+              <Typography variant='h6'>
+                <strong>Total:</strong> {finalTotal} PKR
+              </Typography>
             </Grid>
           </Grid>
+          <Grid container spacing={2} className='mt-4'>
+            <Grid item>
+              <Button variant='contained' color='primary' onClick={handleOpenPaymentModal}>
+                Order Place
+              </Button>
+            </Grid>
 
-          <Button variant='contained' color='primary' onClick={handleOpenPaymentModal} style={{ marginTop: '20px' }}>
-            Order Place
-          </Button>
+            {/* ✅ Show Print button only if payment is finalized */}
+            {showPrintButton && (
+              <Grid item>
+                <Button variant='contained' color='secondary' onClick={handlePrintInvoice}>
+                  Print Invoice
+                </Button>
+              </Grid>
+            )}
+          </Grid>
         </Grid>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Typography variant='h6'>Recent Orders</Typography>
+        {orders.length === 0 ? (
+          <Typography>No orders yet</Typography>
+        ) : (
+          <ul>
+            {orders.map(order => (
+              <li key={order.id} style={{ borderBottom: '1px solid #ccc', padding: '10px 0' }}>
+                <p>
+                  <strong>Invoice #:</strong> {order.invoiceNumber}
+                </p>
+                <p>
+                  <strong>Order Type:</strong> {order.orderType}
+                </p>
+                <p>
+                  <strong>Total:</strong> {order.finalTotal} PKR
+                </p>
+                <Button variant='contained' color='secondary' onClick={() => handlePrintOrder(order)}>
+                  Print
+                </Button>
+                <Button variant='contained' color='primary' style={{ marginLeft: '10px' }}>
+                  Done
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </Grid>
 
       {/* Modal for Payment */}
@@ -286,6 +516,16 @@ const OrderManagement = () => {
           </Button>
         </Box>
       </Modal>
+      {orderToPrint && (
+        <div style={{ display: 'none' }}>
+          <div ref={printRef}>
+            <h2>Invoice #{orderToPrint.invoiceNumber}</h2>
+            <p>Order Type: {orderToPrint.orderType}</p>
+            <p>Total: {orderToPrint.finalTotal} PKR</p>
+            {/* Add More Order Details Here */}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
