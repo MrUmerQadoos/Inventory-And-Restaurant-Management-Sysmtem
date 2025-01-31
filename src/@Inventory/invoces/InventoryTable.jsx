@@ -1,31 +1,26 @@
-// InventoryTable.jsx
 import React from 'react'
 
-const InventoryTable = ({ products }) => {
+const InventoryTable = ({ transactions }) => {
   return (
     <div className='a4-container overflow-x-auto'>
       <table className='min-w-full border border-gray-300'>
         <thead>
           <tr className='bg-gray-200'>
             <th className='border border-gray-300 p-2'>#</th>
-            <th className='border border-gray-300 p-2'>Product Name</th>
-            <th className='border border-gray-300 p-2'>Selling Price</th>
-            <th className='border border-gray-300 p-2'>Actual Price</th>
-            <th className='border border-gray-300 p-2'>Inventory Wise Amount</th>
-            <th className='border border-gray-300 p-2'>Profit</th>
+            <th className='border border-gray-300 p-2'>Type</th>
+            <th className='border border-gray-300 p-2'>Name</th>
+            <th className='border border-gray-300 p-2'>Amount</th>
           </tr>
         </thead>
         <tbody>
-          {products.map((product, index) => (
-            <tr key={product.id}>
+          {transactions.map((item, index) => (
+            <tr key={item.id}>
               <td className='border border-gray-300 p-2'>{index + 1}</td>
-              <td className='border border-gray-300 p-2'>{product.name}</td>
-              <td className='border border-gray-300 p-2'>{product.sellingPrice}</td>
-              <td className='border border-gray-300 p-2'>{product.actualPrice}</td>
-              <td className='border border-gray-300 p-2'>{product.inventoryWiseAmount}</td>
-              <td className='border border-gray-300 p-2'>
-                {Math.round((product.sellingPrice - product.actualPrice) * product.inventoryWiseAmount)}
+              <td className={`border p-2 ${item.type === 'sale' ? 'text-green-500' : 'text-red-500'}`}>
+                {item.type === 'sale' ? 'Sale' : 'Expense'}
               </td>
+              <td className='border border-gray-300 p-2'>{item.name || item.invoiceNumber}</td>
+              <td className='border border-gray-300 p-2'>Rs {item.type === 'sale' ? item.finalTotal : item.amount}</td>
             </tr>
           ))}
         </tbody>

@@ -241,29 +241,60 @@ const OrderManagement = () => {
         <head>
           <title>Invoice #${orderToPrint.invoiceNumber}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 10px; text-align: center; }
-            h2, h3 { margin: 5px 0; }
-            .invoice-header { font-size: 18px; font-weight: bold; }
-            .contact-info { font-size: 12px; margin-bottom: 10px; }
-            .divider { border-top: 1px solid black; margin: 10px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; }
-            th, td { border: 1px solid black; padding: 5px; font-size: 12px; }
-            th { background-color: #f2f2f2; }
-            .total-section { margin-top: 10px; font-size: 14px; font-weight: bold; }
-            .footer { margin-top: 20px; font-size: 12px; }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              text-align: center;
+              margin: 0;
+              padding: 5px;
+            }
+            h2, h3 {
+              margin: 5px 0;
+            }
+            .invoice-header {
+              font-size: 16px;
+              font-weight: bold;
+            }
+            .contact-info {
+              font-size: 10px;
+              margin-bottom: 10px;
+            }
+            .divider {
+              border-top: 1px dashed black;
+              margin: 5px 0;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 5px;
+              text-align: left;
+            }
+            th, td {
+              font-size: 10px;
+              padding: 3px;
+            }
+            .total-section {
+              font-size: 12px;
+              font-weight: bold;
+            }
+            .footer {
+              font-size: 10px;
+              margin-top: 10px;
+            }
           </style>
         </head>
         <body>
           <h2 class="invoice-header">BAIT AL NEMA</h2>
           <p class="contact-info">
             Main Gt Rd, Taj Town, Kamoke, Pakistan<br>
+            Mobile: 0315 588 8660, 0309 588 8660<br>
             www.baitalnema.com
           </p>
+
           <h3>Invoice</h3>
           <p><strong>Invoice No:</strong> ${orderToPrint.invoiceNumber}</p>
           <p><strong>Date:</strong> ${new Date(orderToPrint.timestamp).toLocaleString()}</p>
           <p><strong>Customer:</strong> Walk-In Customer</p>
-          <p><strong>Mobile:</strong> -</p>
 
           <div class="divider"></div>
 
@@ -299,16 +330,19 @@ const OrderManagement = () => {
 
           <p class="total-section">Subtotal: Rs ${orderToPrint.totalAmount.toFixed(2)}</p>
           <p class="total-section">Total: Rs ${orderToPrint.finalTotal.toFixed(2)}</p>
-          <p class="total-section">Current Due: Rs ${orderToPrint.finalTotal.toFixed(2)}</p>
+
+          ${
+            orderToPrint.paymentDetails.method === 'Cash'
+              ? `
+              <p class="total-section">Cash Paid: Rs ${orderToPrint.paymentDetails.cashPaid.toFixed(2)}</p>
+              <p class="total-section">Return Cash: Rs ${orderToPrint.paymentDetails.returnCash.toFixed(2)}</p>
+            `
+              : `<p class="total-section">Payment Method: ${orderToPrint.paymentDetails.method}</p>`
+          }
 
           <div class="divider"></div>
 
-          <p class="footer">
-            pak twon 0324 8785628
-          </p>
-
-          <p class="total-section">Last Invoice No.: ${orderToPrint.invoiceNumber}</p>
-          <p class="total-section">Last Visit Date: ${new Date(orderToPrint.timestamp).toLocaleString()}</p>
+          <p class="footer">pak twon 0324 8785628</p>
 
           <script>
             window.onload = function() { window.print(); window.close(); }
