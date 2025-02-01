@@ -4,13 +4,11 @@ import InventoryTable from './InventoryTable'
 import BtnGrp from './BtnGrp'
 import { useSelector } from 'react-redux'
 import Cookies from 'js-cookie'
-import DatePicker from 'react-datepicker'
-import 'react-datepicker/dist/react-datepicker.css'
 
 const InventoryClosingReport = () => {
-  const [transactions, setTransactions] = useState([]) // Store both expenses & sales
-  const [filteredTransactions, setFilteredTransactions] = useState([])
-  const [filter, setFilter] = useState('all') // 'all' | 'sales' | 'expenses'
+  const [transactions, setTransactions] = useState([]) // Stores all sales & expenses
+  const [filteredTransactions, setFilteredTransactions] = useState([]) // Stores filtered transactions
+  const [filter, setFilter] = useState('all') // Active filter: 'all' | 'sales' | 'Salary' | 'Overhead' | 'Inventory'
   const [isLoading, setIsLoading] = useState(false)
   const [startDate, setStartDate] = useState(new Date()) // Start Date
   const [endDate, setEndDate] = useState(new Date()) // End Date
@@ -22,14 +20,13 @@ const InventoryClosingReport = () => {
     name: Cookies.get('userName'),
     id: Cookies.get('UserId')
   }
-
   const role = useSelector(state => state.user.role) || Cookies.get('userRole')
 
+  // ✅ Fetch transactions from API
   const fetchTransactions = useCallback(async () => {
     setIsLoading(true)
     try {
       const url = new URL('/api/financialReport', window.location.origin)
-
       url.searchParams.append('startDate', startDate.toISOString())
       url.searchParams.append('endDate', endDate.toISOString())
 
@@ -44,7 +41,6 @@ const InventoryClosingReport = () => {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
       const data = await response.json()
-
       const sales = data.sales || []
       const expenses = data.expenses || []
 
@@ -55,17 +51,16 @@ const InventoryClosingReport = () => {
       setTotalExpenses(totalExpenseAmount)
       setNetProfit(totalSalesAmount - totalExpenseAmount)
 
-      // ✅ Ensure that expenses have a proper category field
+      // ✅ Ensure categories are used directly from API response
       const categorizedExpenses = expenses.map(exp => ({
         ...exp,
-        type: 'expense',
-        category: exp.name.includes('Salary') ? 'Salary' : exp.name.includes('Overhead') ? 'Overhead' : 'Inventory'
+        type: 'expense' // Mark as expense
       }))
 
       const allTransactions = [...sales.map(sale => ({ ...sale, type: 'sale' })), ...categorizedExpenses]
 
       setTransactions(allTransactions)
-      setFilteredTransactions(allTransactions)
+      setFilteredTransactions(allTransactions) // Default: Show all
     } catch (error) {
       console.error('Error fetching financial data:', error)
     } finally {
@@ -77,6 +72,7 @@ const InventoryClosingReport = () => {
     fetchTransactions()
   }, [fetchTransactions])
 
+  // ✅ Filter transactions based on selected category
   const handleFilterChange = newFilter => {
     setFilter(newFilter)
 
@@ -84,14 +80,10 @@ const InventoryClosingReport = () => {
       setFilteredTransactions(transactions)
     } else if (newFilter === 'sales') {
       setFilteredTransactions(transactions.filter(t => t.type === 'sale'))
-    } else if (newFilter === 'expenses') {
-      setFilteredTransactions(transactions.filter(t => t.type === 'expense'))
-    } else if (newFilter === 'Salary') {
-      setFilteredTransactions(transactions.filter(t => t.type === 'expense' && t.category === 'Salary'))
-    } else if (newFilter === 'Overhead') {
-      setFilteredTransactions(transactions.filter(t => t.type === 'expense' && t.category === 'Overhead'))
-    } else if (newFilter === 'Inventory') {
-      setFilteredTransactions(transactions.filter(t => t.type === 'expense' && t.category === 'Inventory'))
+    } else {
+      const filtered = transactions.filter(t => t.type === 'expense' && t.category === newFilter)
+      console.log(`Filtering for ${newFilter}:`, filtered) // ✅ Debugging log
+      setFilteredTransactions(filtered)
     }
   }
 
@@ -120,6 +112,7 @@ const InventoryClosingReport = () => {
 
       {isLoading && <p>Loading data...</p>}
 
+      {/* Filter Buttons */}
       <BtnGrp
         setFilter={handleFilterChange}
         startDate={startDate}
@@ -129,6 +122,7 @@ const InventoryClosingReport = () => {
         role={role}
       />
 
+      {/* Table Display */}
       <InventoryTable transactions={filteredTransactions} />
     </div>
   )

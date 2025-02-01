@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/libs/db/db'
 
-// GET Financial Report (Sales + Expenses)
+// GET Financial Report (Sales + Expenses + Inventory)
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url)
     const startDate = new Date(searchParams.get('startDate'))
     const endDate = new Date(searchParams.get('endDate'))
 
-    // Fetch Sales (Product Orders)
+    // ✅ Fetch Sales (Product Orders)
     const sales = await db.productOrder.findMany({
       where: {
         createdAt: {
@@ -25,10 +25,7 @@ export async function GET(req) {
       }
     })
 
-    // Calculate Total Sales Amount
-    const totalSales = sales.reduce((sum, sale) => sum + sale.finalTotal, 0)
-
-    // Fetch Employee Salaries (Expenses)
+    // ✅ Fetch Employee Salaries (Expenses)
     const employeeExpenses = await db.employees.findMany({
       where: {
         createdAt: {
@@ -44,7 +41,7 @@ export async function GET(req) {
       }
     })
 
-    // Fetch Overhead Expenses
+    // ✅ Fetch Overhead Expenses
     const overheadExpenses = await db.overheadExpenses.findMany({
       where: {
         createdAt: {
@@ -60,26 +57,50 @@ export async function GET(req) {
       }
     })
 
-    // Combine Employee Salaries & Overhead Expenses
+    // ✅ Fetch Inventory Records (Expenses)
+    const inventoryRecords = await db.inventoryRecord.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        amount: true,
+        price: true,
+        createdAt: true
+      }
+    })
+
     const expenses = [
       ...employeeExpenses.map(emp => ({
         id: emp.id,
         name: `Salary - ${emp.name}`,
         amount: emp.salary,
-        createdAt: emp.createdAt
+        createdAt: emp.createdAt,
+        category: 'Salary' // ✅ Correct Category
       })),
       ...overheadExpenses.map(exp => ({
         id: exp.id,
         name: exp.name,
         amount: exp.amount,
-        createdAt: exp.createdAt
+        createdAt: exp.createdAt,
+        category: 'Overhead' // ✅ Ensure it's properly categorized
+      })),
+      ...inventoryRecords.map(inv => ({
+        id: inv.id,
+        name: inv.name, // ✅ Keep inventory names clean
+        amount: inv.amount * inv.price, // ✅ Calculate total cost
+        createdAt: inv.createdAt,
+        category: 'Inventory' // ✅ Ensure it's categorized correctly
       }))
     ]
 
-    // Calculate Total Expenses
+    // ✅ Calculate Total Sales and Expenses
+    const totalSales = sales.reduce((sum, sale) => sum + sale.finalTotal, 0)
     const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0)
-
-    // Calculate Net Profit
     const netProfit = totalSales - totalExpenses
 
     return NextResponse.json({

@@ -104,6 +104,15 @@ model Item {
   orderItems    OrderItem[]      // One item can be in multiple orders (many-to-many through OrderItem)
 }
 
+model InventoryRecord {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  amount    Int
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Order {
   id            String           @id @default(auto()) @map("_id") @db.ObjectId
   kotId         String

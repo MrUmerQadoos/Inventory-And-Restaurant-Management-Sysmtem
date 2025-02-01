@@ -499,37 +499,38 @@ const OrderManagement = () => {
                 <Typography>No orders yet.</Typography>
               ) : (
                 <List>
-                  {orders.map(order => (
-                    <ListItem
-                      key={order.id}
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        borderBottom: '1px solid #e0e0e0',
-                        paddingBottom: 2,
-                        marginBottom: 2
-                      }}
-                    >
-                      <Typography>
-                        <strong>Invoice #:</strong> {order.invoiceNumber}
-                      </Typography>
-                      <Typography>
-                        <strong>Order Type:</strong> {order.orderType}
-                      </Typography>
-                      <Typography>
-                        <strong>Total:</strong> {order.finalTotal} PKR
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 2, marginTop: 1 }}>
-                        <Button variant='outlined' color='primary' onClick={() => handlePrintOrder(order)}>
-                          Print
-                        </Button>
-                        <Button variant='contained' color='success'>
-                          Done
-                        </Button>
-                      </Box>
-                    </ListItem>
-                  ))}
+                  {orders.slice(0, 10).map(
+                    (
+                      order // ✅ Show only latest 10 orders
+                    ) => (
+                      <ListItem
+                        key={order.id}
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          borderBottom: '1px solid #e0e0e0',
+                          paddingBottom: 2,
+                          marginBottom: 2
+                        }}
+                      >
+                        <Typography>
+                          <strong>Invoice #:</strong> {order.invoiceNumber}
+                        </Typography>
+                        <Typography>
+                          <strong>Order Type:</strong> {order.orderType}
+                        </Typography>
+                        <Typography>
+                          <strong>Total:</strong> {order.finalTotal} PKR
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, marginTop: 1 }}>
+                          <Button variant='contained' color='success' onClick={() => handlePrintOrder(order)}>
+                            Print
+                          </Button>
+                        </Box>
+                      </ListItem>
+                    )
+                  )}
                 </List>
               )}
             </Paper>
