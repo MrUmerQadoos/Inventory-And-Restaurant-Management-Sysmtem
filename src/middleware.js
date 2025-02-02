@@ -52,6 +52,16 @@ export const config = {
     '/frontdesk',
     '/items',
     '/orders',
+    '/inventory',
+    '/product',
+    '/salary',
+    '/salarymanagement',
+    '/overhead',
+    '/inventoryrecord',
+    '/orderlist',
+    '/checkcustomer',
+    '/invoice',
+    '/productinvoice',
     '/receptionist/dashboard'
     // Add more secure routes here if necessary
   ]

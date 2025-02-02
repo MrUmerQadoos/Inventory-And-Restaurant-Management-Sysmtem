@@ -65,6 +65,8 @@ const VerticalMenu = ({ scrollMenu }) => {
             <MenuItem href={`/salarymanagement`}>Manage Salary</MenuItem>
             <MenuItem href={`/overhead`}>Overhead Expense</MenuItem>
             <MenuItem href={`/inventoryrecord`}>Inventory Expense</MenuItem>
+            <MenuItem href={`/checkcustomer`}>Check Customer</MenuItem>
+            <MenuItem href={`/orderlist`}>Delete Orders</MenuItem>
 
             <MenuItem href={`/invoice`}>Analytics</MenuItem>
             <MenuItem href={`/productinvoice`}>Create Invoice</MenuItem>

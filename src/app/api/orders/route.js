@@ -3,20 +3,21 @@ import { db } from '@/libs/db/db'
 
 export async function GET() {
   try {
-    // Fetch all orders while ensuring no null values for `invoiceNumber`
+    // Fetch all orders with descending order by `createdAt`
     const orders = await db.productOrder.findMany({
       orderBy: { createdAt: 'desc' }
     })
 
-    // Filter out any orders with a null `invoiceNumber`
+    // Filter out orders that may have null `invoiceNumber`
     const validOrders = orders.filter(order => order.invoiceNumber !== null)
 
-    // Convert JSON fields before sending response
+    // ✅ Ensure all JSON fields are parsed correctly
     const formattedOrders = validOrders.map(order => ({
       ...order,
-      orderItems: JSON.parse(order.orderItems || '[]'), // Parse JSON or set empty array
-      inventoryUsage: JSON.parse(order.inventoryUsage || '[]'),
-      paymentDetails: JSON.parse(order.paymentDetails || '{}')
+      orderItems: order.orderItems || [], // ✅ No need for `JSON.parse()`, Prisma handles JSON fields
+      inventoryUsage: order.inventoryUsage || [],
+      paymentDetails: order.paymentDetails || {},
+      customer: order.customer || null // ✅ Ensure customer details are included
     }))
 
     return NextResponse.json({ success: true, orders: formattedOrders }, { status: 200 })
@@ -37,10 +38,10 @@ export async function POST(req) {
       finalTotal,
       paymentDetails,
       timestamp,
-      userId // Optional user association
+      userId,
+      customer // ✅ New: Customer details (name, phone, address)
     } = await req.json()
 
-    // **Validation: Check Required Fields**
     if (!invoiceNumber || !orderType || !orderItems || orderItems.length === 0) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
@@ -48,7 +49,6 @@ export async function POST(req) {
     let inventoryUsage = []
     let totalInventoryCost = 0
 
-    // **Step 1: Process Inventory Usage**
     for (const product of orderItems) {
       const productData = await db.products.findUnique({
         where: { id: product.id },
@@ -62,7 +62,10 @@ export async function POST(req) {
         )
       }
 
-      for (const usage of productData.inventoryUsage) {
+      // ✅ FIX: Prisma already returns JSON, no need for `JSON.parse()`
+      const parsedInventoryUsage = productData.inventoryUsage
+
+      for (const usage of parsedInventoryUsage) {
         const totalRequiredAmount = usage.amount * product.quantity
         const costDeduction = usage.unitPrice * totalRequiredAmount
         totalInventoryCost += costDeduction
@@ -98,31 +101,24 @@ export async function POST(req) {
       }
     }
 
-    // **Step 2: Adjust Final Amount**
-    // const adjustedFinalTotal = totalAmount - totalInventoryCost + deliveryCharge
-
-    // **Step 3: Save Order in Database**
     const newOrder = await db.productOrder.create({
       data: {
         invoiceNumber,
         orderType,
-        orderItems: JSON.stringify(orderItems),
+        orderItems, // ✅ No need for `JSON.stringify()`, Prisma stores JSON directly
         totalAmount,
         deliveryCharge,
         finalTotal,
-        inventoryUsage: JSON.stringify(inventoryUsage),
-        paymentDetails: JSON.stringify(paymentDetails),
+        inventoryUsage, // ✅ Prisma stores JSON directly
+        paymentDetails, // ✅ Prisma stores JSON directly
         createdAt: new Date(timestamp),
-        userId: userId || null
+        userId: userId || null,
+        customer: customer || null // ✅ Prisma stores JSON, no need for `JSON.stringify()`
       }
     })
 
     return NextResponse.json(
-      {
-        success: true,
-        order: newOrder,
-        message: 'Order placed successfully. Inventory updated and total adjusted.'
-      },
+      { success: true, order: newOrder, message: 'Order placed successfully. Inventory updated.' },
       { status: 201 }
     )
   } catch (error) {

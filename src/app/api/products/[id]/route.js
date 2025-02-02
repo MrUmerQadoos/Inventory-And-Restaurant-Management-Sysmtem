@@ -96,43 +96,21 @@ export async function DELETE(req, { params }) {
   const { id } = params
 
   try {
-    // Fetch the product to delete
+    // ✅ Fetch the product before deleting
     const product = await db.products.findUnique({
-      where: { id },
-      include: { inventoryItems: true }
+      where: { id }
     })
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    // Use `inventoryUsage` to restore the inventory amounts
-    for (const usage of product.inventoryUsage || []) {
-      const inventoryItem = await db.inventoryItem.findUnique({
-        where: { id: usage.id }
-      })
+    // ✅ Delete the product without modifying inventory items
+    await db.products.delete({
+      where: { id }
+    })
 
-      if (!inventoryItem) continue // Skip if the inventory item doesn't exist
-
-      // Calculate restored amount
-      const restoredAmount = usage.amount || 0 // Use `amount` from `inventoryUsage`
-      const newAmount = (inventoryItem.amount || 0) + restoredAmount
-      const newPrice = newAmount * (inventoryItem.unitPrice || 0)
-
-      // Update inventory item
-      await db.inventoryItem.update({
-        where: { id: usage.id },
-        data: {
-          amount: newAmount,
-          price: newPrice
-        }
-      })
-    }
-
-    // Delete the product
-    const deletedProduct = await db.products.delete({ where: { id } })
-
-    return NextResponse.json(deletedProduct, { status: 200 })
+    return NextResponse.json({ message: 'Product deleted successfully!' }, { status: 200 })
   } catch (error) {
     console.error('Error deleting product:', error)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

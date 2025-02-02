@@ -48,6 +48,11 @@ const OrderManagement = () => {
   const [orderToPrint, setOrderToPrint] = useState(null) // Store order details for printing
   const [showPrintButton, setShowPrintButton] = useState(false) // Track Print button visibility
 
+  const [showCustomer, setShowCustomer] = useState(false) // Toggle Customer Section
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerAddress, setCustomerAddress] = useState('')
+
   const printRef = useRef(null) // ✅ Initialize correctly
 
   const handlePrint = useReactToPrint({
@@ -138,7 +143,14 @@ const OrderManagement = () => {
       deliveryCharge,
       finalTotal,
       paymentDetails,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      customer: showCustomer
+        ? {
+            name: customerName,
+            phone: customerPhone,
+            address: customerAddress
+          }
+        : null // ✅ If customer info is not provided, keep it null
     }
 
     try {
@@ -402,6 +414,44 @@ const OrderManagement = () => {
                 fullWidth
                 sx={{ marginBottom: 2 }}
               />
+
+              <Button
+                variant='outlined'
+                fullWidth
+                sx={{ marginBottom: 2 }}
+                onClick={() => setShowCustomer(!showCustomer)}
+              >
+                {showCustomer ? 'Hide Customer Info' : 'Add Customer Info'}
+              </Button>
+
+              {showCustomer && (
+                <Box sx={{ marginBottom: 2 }}>
+                  <TextField
+                    label='Customer Name'
+                    variant='outlined'
+                    fullWidth
+                    sx={{ marginBottom: 2 }}
+                    value={customerName}
+                    onChange={e => setCustomerName(e.target.value)}
+                  />
+                  <TextField
+                    label='Phone Number'
+                    variant='outlined'
+                    fullWidth
+                    sx={{ marginBottom: 2 }}
+                    value={customerPhone}
+                    onChange={e => setCustomerPhone(e.target.value)}
+                  />
+                  <TextField
+                    label='Address'
+                    variant='outlined'
+                    fullWidth
+                    sx={{ marginBottom: 2 }}
+                    value={customerAddress}
+                    onChange={e => setCustomerAddress(e.target.value)}
+                  />
+                </Box>
+              )}
 
               {/* Add Product Button */}
               <Button variant='contained' fullWidth sx={{ marginBottom: 3 }} onClick={handleAddProduct}>
