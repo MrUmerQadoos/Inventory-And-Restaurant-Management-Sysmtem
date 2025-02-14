@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Grid,
   Typography,
@@ -11,7 +11,13 @@ import {
   Autocomplete,
   Paper,
   List,
-  ListItem
+  ListItem,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableContainer,
+  TableBody
 } from '@mui/material'
 import { useReactToPrint } from 'react-to-print'
 import OrderPrintComponent from './OrderPrintComponent'
@@ -62,8 +68,8 @@ const OrderManagement = () => {
   })
 
   const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0) // ✅ Define totalAmount first
-  const deliveryCharge = orderType === 'Delivery' ? 280 : 0
-  const finalTotal = totalAmount + deliveryCharge // ✅ No more ReferenceError
+  // New version
+  const deliveryCharge = orderType === 'Delivery' ? 40 : 0
 
   const handleAddProduct = () => {
     if (!currentProduct || quantity <= 0) return
@@ -105,7 +111,7 @@ const OrderManagement = () => {
     let paymentDetails = {}
     if (paymentMethod === 'Cash') {
       const cashReceived = Number(cashPaid)
-      if (cashReceived < finalTotal) {
+      if (cashReceived < totalAmount) {
         alert('Cash paid is less than the total amount.')
         setFinalizeLoading(false)
         return
@@ -113,7 +119,7 @@ const OrderManagement = () => {
       paymentDetails = {
         method: 'Cash',
         cashPaid: cashReceived,
-        returnCash: cashReceived - finalTotal
+        returnCash: cashReceived - totalAmount
       }
     } else if (paymentMethod === 'Card') {
       if (!transactionNumber) {
@@ -141,7 +147,6 @@ const OrderManagement = () => {
       })),
       totalAmount,
       deliveryCharge,
-      finalTotal,
       paymentDetails,
       timestamp: new Date().toISOString(),
       customer: showCustomer
@@ -340,8 +345,8 @@ const OrderManagement = () => {
           <p class="total-section">Total Items: ${orderToPrint.orderItems.length}</p>
           <div class="divider"></div>
 
-          <p class="total-section">Subtotal: Rs ${orderToPrint.totalAmount.toFixed(2)}</p>
-          <p class="total-section">Total: Rs ${orderToPrint.finalTotal.toFixed(2)}</p>
+         <p class="total-section">Subtotal: Rs ${orderToPrint.totalAmount.toFixed(2)}</p>
+<p class="total-section">Total: Rs ${orderToPrint.totalAmount.toFixed(2)}</p>
 
           ${
             orderToPrint.paymentDetails.method === 'Cash'
@@ -382,7 +387,7 @@ const OrderManagement = () => {
           <Grid item xs={12} md={6}>
             <Paper sx={{ padding: 3, borderRadius: 2 }}>
               <Typography variant='h6' gutterBottom>
-                Select Product
+                Select Menu Item
               </Typography>
 
               {/* Autocomplete for selecting product */}
@@ -394,7 +399,7 @@ const OrderManagement = () => {
                 renderInput={params => (
                   <TextField
                     {...params}
-                    label='Search Products'
+                    label='Search Menu Item'
                     variant='outlined'
                     fullWidth
                     sx={{ marginBottom: 2 }}
@@ -479,7 +484,7 @@ const OrderManagement = () => {
                   variant={orderType === 'Delivery' ? 'contained' : 'outlined'}
                   onClick={() => setOrderType('Delivery')}
                 >
-                  Delivery (+280 PKR)
+                  Delivery (+40 PKR)
                 </Button>
               </Box>
 
@@ -516,13 +521,13 @@ const OrderManagement = () => {
               <Typography variant='body1' sx={{ marginTop: 2 }}>
                 <strong>Subtotal:</strong> {totalAmount} PKR
               </Typography>
-              {orderType === 'Delivery' && (
+              {/* {orderType === 'Delivery' && (
                 <Typography variant='body1'>
-                  <strong>Delivery Charges:</strong> 280 PKR
+                  <strong>Delivery Charges:</strong> 40 PKR
                 </Typography>
-              )}
+              )} */}
               <Typography variant='h6' sx={{ marginBottom: 2 }}>
-                <strong>Total:</strong> {finalTotal} PKR
+                <strong>Total:</strong> {totalAmount} PKR
               </Typography>
 
               {/* Buttons */}
@@ -545,43 +550,102 @@ const OrderManagement = () => {
               <Typography variant='h6' gutterBottom>
                 Recent Orders
               </Typography>
+
               {orders.length === 0 ? (
                 <Typography>No orders yet.</Typography>
               ) : (
-                <List>
-                  {orders.slice(0, 10).map(
-                    (
-                      order // ✅ Show only latest 10 orders
-                    ) => (
-                      <ListItem
-                        key={order.id}
-                        sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          borderBottom: '1px solid #e0e0e0',
-                          paddingBottom: 2,
-                          marginBottom: 2
-                        }}
-                      >
-                        <Typography>
+                // Wrap each order in a Grid item so it appears as a separate "card"
+                <Grid container spacing={2}>
+                  {orders.map(order => (
+                    <Grid item xs={12} key={order.id}>
+                      <Paper elevation={3} sx={{ p: 2 }}>
+                        {/* Top-level info */}
+                        <Typography variant='subtitle1' gutterBottom>
                           <strong>Invoice #:</strong> {order.invoiceNumber}
                         </Typography>
-                        <Typography>
+                        <Typography variant='body2'>
                           <strong>Order Type:</strong> {order.orderType}
                         </Typography>
-                        <Typography>
-                          <strong>Total:</strong> {order.finalTotal} PKR
+                        <Typography variant='body2' sx={{ mb: 1 }}>
+                          <strong>Customer:</strong>{' '}
+                          {order.customer?.name ? (
+                            <>
+                              {order.customer.name}
+                              {order.customer.phone && <> | Phone: {order.customer.phone}</>}
+                              {order.customer.address && <> | Addr: {order.customer.address}</>}
+                            </>
+                          ) : (
+                            'N/A'
+                          )}
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, marginTop: 1 }}>
-                          <Button variant='contained' color='success' onClick={() => handlePrintOrder(order)}>
-                            Print
-                          </Button>
+
+                        <Typography variant='body2'>
+                          <strong>Payment Method:</strong> {order.paymentDetails?.method || 'N/A'}
+                        </Typography>
+                        {order.paymentDetails?.method === 'Cash' && (
+                          <>
+                            <Typography variant='body2'>Cash Paid: {order.paymentDetails.cashPaid}</Typography>
+                            <Typography variant='body2'>Return Cash: {order.paymentDetails.returnCash}</Typography>
+                          </>
+                        )}
+                        {order.paymentDetails?.method === 'Card' && (
+                          <Typography variant='body2'>
+                            Transaction #: {order.paymentDetails.transactionNumber}
+                          </Typography>
+                        )}
+
+                        <Typography variant='body2' sx={{ mt: 1 }}>
+                          <strong>Total (PKR):</strong> {order.totalAmount}
+                        </Typography>
+
+                        {/* Button(s) */}
+                        <Button
+                          variant='contained'
+                          color='success'
+                          sx={{ mt: 1 }}
+                          onClick={() => handlePrintOrder(order)}
+                        >
+                          Print
+                        </Button>
+
+                        {/* Order Items (nested table or list) */}
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant='subtitle2' gutterBottom>
+                            Order Items
+                          </Typography>
+                          <Table size='small'>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>
+                                  <strong>Product</strong>
+                                </TableCell>
+                                <TableCell>
+                                  <strong>Quantity</strong>
+                                </TableCell>
+                                <TableCell>
+                                  <strong>Unit Price</strong>
+                                </TableCell>
+                                <TableCell>
+                                  <strong>Total Price</strong>
+                                </TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {order.orderItems.map((item, idx) => (
+                                <TableRow key={idx}>
+                                  <TableCell>{item.name}</TableCell>
+                                  <TableCell>{item.quantity}</TableCell>
+                                  <TableCell>{item.sellingPrice}</TableCell>
+                                  <TableCell>{item.totalPrice}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </Box>
-                      </ListItem>
-                    )
-                  )}
-                </List>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
               )}
             </Paper>
           </Grid>
@@ -672,7 +736,7 @@ const OrderManagement = () => {
           <div ref={printRef}>
             <h2>Invoice #{orderToPrint.invoiceNumber}</h2>
             <p>Order Type: {orderToPrint.orderType}</p>
-            <p>Total: {orderToPrint.finalTotal} PKR</p>
+            <p>Total: {orderToPrint.totalAmount} PKR</p>
             {/* Add More Order Details Here */}
           </div>
         </div>

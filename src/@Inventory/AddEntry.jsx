@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import {
   Button,
@@ -28,6 +27,7 @@ const AddEntry = () => {
   const [name, setName] = useState('') // Item name
   const [amount, setAmount] = useState('') // Item amount
   const [price, setPrice] = useState('') // Item price
+  const [fixedPrice, setFixedPrice] = useState('') // Fixed price
   const [loading, setLoading] = useState(false) // Loading state
   const [open, setOpen] = useState(false) // Dialog state
 
@@ -50,7 +50,12 @@ const AddEntry = () => {
     event.preventDefault()
     setLoading(true)
 
-    const newItem = { name, amount: parseInt(amount, 10), price: parseFloat(price) }
+    const newItem = {
+      name,
+      amount: parseInt(amount, 10),
+      price: parseFloat(price),
+      fixedPrice: parseFloat(fixedPrice) // Add fixed price
+    }
 
     try {
       let response
@@ -97,6 +102,7 @@ const AddEntry = () => {
       setName(item.name || '') // Set name
       setAmount(item.amount ? item.amount.toString() : '') // Ensure amount is set as a string
       setPrice(item.price ? item.price.toString() : '') // Ensure price is set as a string
+      setFixedPrice(item.fixedPrice ? item.fixedPrice.toString() : '') // Ensure fixedPrice is set as a string
       setOpen(true) // Open dialog
     }
   }
@@ -117,6 +123,7 @@ const AddEntry = () => {
     setName('')
     setAmount('')
     setPrice('')
+    setFixedPrice('') // Clear the fixed price field
     setOpen(false)
   }
 
@@ -139,7 +146,7 @@ const AddEntry = () => {
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
-              label='Amount'
+              label='Quantity'
               variant='outlined'
               fullWidth
               type='number'
@@ -159,6 +166,17 @@ const AddEntry = () => {
               required
             />
           </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              label='Fixed Price'
+              variant='outlined'
+              fullWidth
+              type='number'
+              value={fixedPrice}
+              onChange={e => setFixedPrice(e.target.value)}
+              required
+            />
+          </Grid>
           <Grid item xs={12}>
             <Button variant='contained' color='primary' type='submit' disabled={loading}>
               {loading ? <CircularProgress size={24} color='inherit' /> : itemId ? 'Update Item' : 'Add Item'}
@@ -172,8 +190,9 @@ const AddEntry = () => {
           <TableHead>
             <TableRow>
               <TableCell>Item Name</TableCell>
-              <TableCell>Amount</TableCell>
+              <TableCell>Quantity</TableCell>
               <TableCell>Price</TableCell>
+              <TableCell>Fixed Price</TableCell>
               <TableCell align='right'>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -183,6 +202,7 @@ const AddEntry = () => {
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.amount}</TableCell>
                 <TableCell>{item.price}</TableCell>
+                <TableCell>{item.fixedPrice}</TableCell>
                 <TableCell align='right'>
                   <IconButton onClick={() => handleEdit(item)}>
                     <Edit />
@@ -211,7 +231,7 @@ const AddEntry = () => {
             required
           />
           <TextField
-            label='Amount'
+            label='Quantity'
             variant='outlined'
             fullWidth
             margin='normal'
@@ -228,6 +248,16 @@ const AddEntry = () => {
             type='number'
             value={price}
             onChange={e => setPrice(e.target.value)}
+            required
+          />
+          <TextField
+            label='Fixed Price'
+            variant='outlined'
+            fullWidth
+            margin='normal'
+            type='number'
+            value={fixedPrice}
+            onChange={e => setFixedPrice(e.target.value)}
             required
           />
         </DialogContent>

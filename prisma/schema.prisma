@@ -67,19 +67,17 @@ model ProductOrder {
   invoiceNumber  Int       // Invoice Number for the order
   orderType      String    // Order Type (e.g., Dine-in, Takeaway, Delivery)
   orderItems     Json      // JSON array of ordered items
-  totalAmount    Float     // Total amount before delivery charges
-  deliveryCharge Float     // Delivery charges applied
-  finalTotal     Float     // Total amount after delivery charges
+  totalAmount    Float     // Sum of all ordered items (NOT including delivery)
+  deliveryCharge Float     // Delivery charges stored separately for expense tracking
   inventoryUsage Json      // Store inventory usage details
   paymentDetails Json      // Store payment details (method, cashPaid, returnCash)
-  customer       Json?     // ✅ New Field: Store optional customer details (name, phone, address)
+  customer       Json?     // Optional customer details (name, phone, address)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-
-  // Foreign relation to User (optional)
   userId         String?   @db.ObjectId
   user           User?     @relation(fields: [userId], references: [id])
 }
+
 
 
 
@@ -87,6 +85,7 @@ model InventoryItem {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   unitPrice Float
+   fixedPrice Float
   amount  Int
   price  Int
   product   Products? @relation(fields: [productId], references: [id])
@@ -95,16 +94,17 @@ model InventoryItem {
 
 
 model Item {
-  id            String           @id @default(auto()) @map("_id") @db.ObjectId
-  code          String           @unique
-  name          String
-  price         Float
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  code        String   @unique
+  name        String
+  price       Float
+  fixedPrice  Float    // New field to store fixed price
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  // Relations
-  orderItems    OrderItem[]      // One item can be in multiple orders (many-to-many through OrderItem)
+  orderItems  OrderItem[] // One item can be in multiple orders (many-to-many through OrderItem)
 }
+
 
 model InventoryRecord {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId

@@ -9,7 +9,14 @@ export async function GET() {
         inventoryItems: true // Fetch related inventory items
       }
     })
-    return NextResponse.json(products, { status: 200 })
+
+    // Parse expenses field if it's stored as a string
+    const productsWithParsedExpenses = products.map(product => ({
+      ...product,
+      expenses: product.expenses ? JSON.parse(product.expenses) : []
+    }))
+
+    return NextResponse.json(productsWithParsedExpenses, { status: 200 })
   } catch (error) {
     console.error('Error fetching products:', error)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
@@ -34,9 +41,12 @@ export async function POST(req) {
     }))
 
     // ✅ Convert Expenses to JSON Format for Storage
+    // Convert Expenses to JSON Format for Storage
+    // ✅ Convert Expenses to JSON Format for Storage
+    // ✅ Convert Expenses to JSON Format for Storage
     const expensesData = expenses && expenses.length > 0 ? JSON.stringify(expenses) : '[]'
 
-    // ✅ Create the new product with inventory items and expenses
+    // Create the new product with inventory items and expenses
     const newProduct = await db.products.create({
       data: {
         name,
@@ -44,12 +54,12 @@ export async function POST(req) {
         sellingPrice: parseFloat(sellingPrice),
         inventoryWiseAmount,
         inventoryItems: {
-          connect: inventoryItems.map(item => ({ id: item.id })) // ✅ Connect inventory items
+          connect: inventoryItems.map(item => ({ id: item.id }))
         },
-        inventoryUsage, // ✅ Store inventory usage details
-        expenses: expensesData // ✅ Store expenses as JSON
+        inventoryUsage, // Store inventory usage details
+        expenses: expensesData // Store expenses as JSON string
       },
-      include: { inventoryItems: true } // ✅ Ensure related inventory items are returned
+      include: { inventoryItems: true }
     })
 
     return NextResponse.json(newProduct, { status: 201 })

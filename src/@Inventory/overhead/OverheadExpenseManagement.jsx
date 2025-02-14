@@ -126,7 +126,7 @@ const OverheadExpenseManagement = () => {
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
-              label='Amount'
+              label='Expense Cost'
               type='number'
               variant='outlined'
               fullWidth
@@ -159,7 +159,7 @@ const OverheadExpenseManagement = () => {
           <TableHead>
             <TableRow>
               <TableCell>Expense Name</TableCell>
-              <TableCell>Amount</TableCell>
+              <TableCell>Expense Cost</TableCell>
               <TableCell align='right'>Actions</TableCell>
             </TableRow>
           </TableHead>

@@ -15,21 +15,21 @@ export async function GET() {
 // POST a new inventory item
 export async function POST(req) {
   try {
-    const { name, amount, price } = await req.json()
+    const { name, amount, price, fixedPrice } = await req.json()
 
-    if (!name || amount == null || price == null) {
-      return NextResponse.json({ error: 'All fields (name, amount, price) are required' }, { status: 400 })
+    if (!name || amount == null || price == null || fixedPrice == null) {
+      return NextResponse.json({ error: 'All fields (name, amount, price, fixedPrice) are required' }, { status: 400 })
     }
 
-    const unitPrice = parseFloat(price) / parseInt(amount, 10) // Calculate unit price
+    const unitPrice = parseFloat(price) / parseInt(amount, 10)
 
-    // Create a new inventory item
     const newItem = await db.inventoryItem.create({
       data: {
         name,
-        unitPrice,
         amount: parseInt(amount, 10),
-        price: parseFloat(price)
+        price: parseFloat(price),
+        fixedPrice: parseFloat(fixedPrice),
+        unitPrice // Calculate unit price
       }
     })
 

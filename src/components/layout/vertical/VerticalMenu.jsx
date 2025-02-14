@@ -57,18 +57,18 @@ const VerticalMenu = ({ scrollMenu }) => {
               Dashboard
             </MenuItem>
 
-            <MenuItem href={`/createusers`}>Create Users</MenuItem>
+            <MenuItem href={`/createusers`}>User Management</MenuItem>
 
-            <MenuItem href={`/inventory`}>Add Inventory</MenuItem>
-            <MenuItem href={`/product`}>Add Products</MenuItem>
-            <MenuItem href={`/salary`}>Add Salary</MenuItem>
-            <MenuItem href={`/salarymanagement`}>Manage Salary</MenuItem>
-            <MenuItem href={`/overhead`}>Overhead Expense</MenuItem>
-            <MenuItem href={`/inventoryrecord`}>Inventory Expense</MenuItem>
-            <MenuItem href={`/checkcustomer`}>Check Customer</MenuItem>
-            <MenuItem href={`/orderlist`}>Delete Orders</MenuItem>
+            <MenuItem href={`/inventory`}>Inventory Management</MenuItem>
+            <MenuItem href={`/product`}>Menu Items</MenuItem>
+            <MenuItem href={`/salary`}>Employees</MenuItem>
+            <MenuItem href={`/salarymanagement`}>Salary Management</MenuItem>
+            <MenuItem href={`/overhead`}>Overhead Expenses</MenuItem>
+            <MenuItem href={`/inventoryrecord`}>Add Inventory </MenuItem>
+            <MenuItem href={`/checkcustomer`}>Customer Database</MenuItem>
+            <MenuItem href={`/orderlist`}>Orders Database</MenuItem>
 
-            <MenuItem href={`/invoice`}>Analytics</MenuItem>
+            <MenuItem href={`/invoice`}>Reports</MenuItem>
             <MenuItem href={`/productinvoice`}>Create Invoice</MenuItem>
           </>
         )}

@@ -67,7 +67,7 @@ const Navigation = () => {
       <NavHeader>
         <Link href='/' className='font-bold text-[20px] '>
           {/* <Logo /> */}
-          Sunset Heights
+          Bait-al-Ne'ma
         </Link>
         {isBreakpointReached && <i className='ri-close-line text-xl' onClick={() => toggleVerticalNav(false)} />}
       </NavHeader>

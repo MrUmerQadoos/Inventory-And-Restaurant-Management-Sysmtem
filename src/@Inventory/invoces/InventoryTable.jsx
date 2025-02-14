@@ -1,3 +1,4 @@
+'use client'
 import React from 'react'
 
 const InventoryTable = ({ transactions }) => {
@@ -8,7 +9,7 @@ const InventoryTable = ({ transactions }) => {
           <tr className='bg-gray-200'>
             <th className='border border-gray-300 p-2'>#</th>
             <th className='border border-gray-300 p-2'>Type</th>
-            <th className='border border-gray-300 p-2'>Name</th>
+            <th className='border border-gray-300 p-2'>Name/Invoice</th>
             <th className='border border-gray-300 p-2'>Amount</th>
           </tr>
         </thead>
@@ -16,10 +17,12 @@ const InventoryTable = ({ transactions }) => {
           {transactions.map((item, index) => (
             <tr key={item.id}>
               <td className='border border-gray-300 p-2'>{index + 1}</td>
-              <td className={`border p-2 ${item.type === 'sale' ? 'text-green-500' : 'text-red-500'}`}>
+              <td className={`border border-gray-300 p-2 ${item.type === 'sale' ? 'text-green-500' : 'text-red-500'}`}>
                 {item.type === 'sale' ? 'Sale' : 'Expense'}
               </td>
-              <td className='border border-gray-300 p-2'>{item.name || item.invoiceNumber}</td>
+              <td className='border border-gray-300 p-2'>
+                {item.invoiceNumber ? `Invoice #${item.invoiceNumber}` : item.name}
+              </td>
               <td className='border border-gray-300 p-2'>Rs {item.type === 'sale' ? item.finalTotal : item.amount}</td>
             </tr>
           ))}

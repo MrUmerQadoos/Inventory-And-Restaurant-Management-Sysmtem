@@ -6,12 +6,15 @@ import { useSelector } from 'react-redux'
 import Cookies from 'js-cookie'
 
 const InventoryClosingReport = () => {
-  const [transactions, setTransactions] = useState([]) // Stores all sales & expenses
-  const [filteredTransactions, setFilteredTransactions] = useState([]) // Stores filtered transactions
-  const [filter, setFilter] = useState('all') // Active filter: 'all' | 'sales' | 'Salary' | 'Overhead' | 'Inventory'
+  // originalTransactions stores both sales and expenses
+  const [originalTransactions, setOriginalTransactions] = useState([])
+  const [filteredTransactions, setFilteredTransactions] = useState([]) // For filtered view
+  const [filter, setFilter] = useState('all') // Active filter state
+
+  const [startDate, setStartDate] = useState(new Date())
+  const [endDate, setEndDate] = useState(new Date())
+
   const [isLoading, setIsLoading] = useState(false)
-  const [startDate, setStartDate] = useState(new Date()) // Start Date
-  const [endDate, setEndDate] = useState(new Date()) // End Date
   const [totalSales, setTotalSales] = useState(0)
   const [totalExpenses, setTotalExpenses] = useState(0)
   const [netProfit, setNetProfit] = useState(0)
@@ -22,69 +25,102 @@ const InventoryClosingReport = () => {
   }
   const role = useSelector(state => state.user.role) || Cookies.get('userRole')
 
-  // ✅ Fetch transactions from API
-  const fetchTransactions = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const url = new URL('/api/financialReport', window.location.origin)
-      url.searchParams.append('startDate', startDate.toISOString())
-      url.searchParams.append('endDate', endDate.toISOString())
+  // Fetch transactions from API (both sales and expenses)
+  const fetchTransactions = useCallback(
+    async (customStart, customEnd) => {
+      setIsLoading(true)
+      try {
+        const url = new URL('/api/financialReport', window.location.origin)
+        const finalStart = customStart || startDate
+        const finalEnd = customEnd || endDate
+        url.searchParams.append('startDate', finalStart.toISOString())
+        url.searchParams.append('endDate', finalEnd.toISOString())
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      })
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        })
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
-      const data = await response.json()
-      const sales = data.sales || []
-      const expenses = data.expenses || []
+        const data = await response.json()
+        const sales = data.sales || []
+        const expenses = data.expenses || []
 
-      const totalSalesAmount = sales.reduce((acc, order) => acc + order.finalTotal, 0)
-      const totalExpenseAmount = expenses.reduce((acc, exp) => acc + exp.amount, 0)
+        const totalSalesAmount = sales.reduce((acc, order) => acc + order.finalTotal, 0)
+        const totalExpenseAmount = expenses.reduce((acc, exp) => acc + exp.amount, 0)
+        setTotalSales(totalSalesAmount)
+        setTotalExpenses(totalExpenseAmount)
+        setNetProfit(totalSalesAmount - totalExpenseAmount)
 
-      setTotalSales(totalSalesAmount)
-      setTotalExpenses(totalExpenseAmount)
-      setNetProfit(totalSalesAmount - totalExpenseAmount)
+        // Mark sales with type 'sale'
+        const salesWithType = sales.map(sale => ({ ...sale, type: 'sale' }))
 
-      // ✅ Ensure categories are used directly from API response
-      const categorizedExpenses = expenses.map(exp => ({
-        ...exp,
-        type: 'expense' // Mark as expense
-      }))
+        // Mark expenses with type 'expense'
+        const categorizedExpenses = expenses.map(exp => ({ ...exp, type: 'expense' }))
 
-      const allTransactions = [...sales.map(sale => ({ ...sale, type: 'sale' })), ...categorizedExpenses]
+        // Combine sales and expenses into one array
+        const mergedTransactions = [...salesWithType, ...categorizedExpenses]
 
-      setTransactions(allTransactions)
-      setFilteredTransactions(allTransactions) // Default: Show all
-    } catch (error) {
-      console.error('Error fetching financial data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [startDate, endDate])
+        // Set the merged transactions without any filters applied
+        setOriginalTransactions(mergedTransactions)
+
+        // Initially set the filtered transactions to show all data
+        setFilteredTransactions(mergedTransactions)
+      } catch (error) {
+        console.error('Error fetching financial data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [startDate, endDate]
+  )
 
   useEffect(() => {
     fetchTransactions()
   }, [fetchTransactions])
 
-  // ✅ Filter transactions based on selected category
   const handleFilterChange = newFilter => {
     setFilter(newFilter)
 
+    let filteredData = []
+
+    // Filter the transactions based on the selected filter
     if (newFilter === 'all') {
-      setFilteredTransactions(transactions)
+      filteredData = originalTransactions // Show all data
     } else if (newFilter === 'sales') {
-      setFilteredTransactions(transactions.filter(t => t.type === 'sale'))
-    } else {
-      const filtered = transactions.filter(t => t.type === 'expense' && t.category === newFilter)
-      console.log(`Filtering for ${newFilter}:`, filtered) // ✅ Debugging log
-      setFilteredTransactions(filtered)
+      filteredData = originalTransactions.filter(t => t.type === 'sale')
+    } else if (newFilter === 'DeliveryCharge') {
+      filteredData = originalTransactions.filter(t => t.type === 'expense' && t.category === 'DeliveryCharge')
+    } else if (newFilter === 'Salary') {
+      filteredData = originalTransactions.filter(t => t.type === 'expense' && t.category === 'Salary')
+    } else if (newFilter === 'Overhead') {
+      filteredData = originalTransactions.filter(t => t.type === 'expense' && t.category === 'Overhead')
+    } else if (newFilter === 'Inventory') {
+      filteredData = originalTransactions.filter(t => t.type === 'expense' && t.category === 'Inventory')
     }
+
+    // Set the filtered transactions
+    setFilteredTransactions(filteredData)
+  }
+
+  const handleDailyReport = () => {
+    const now = new Date()
+    let dailyStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 2, 0, 0)
+    if (now < dailyStart) {
+      dailyStart.setDate(dailyStart.getDate() - 1)
+    }
+    const dailyEnd = new Date(dailyStart.getTime() + 24 * 60 * 60 * 1000)
+    setStartDate(dailyStart)
+    setEndDate(dailyEnd)
+    fetchTransactions(dailyStart, dailyEnd)
+  }
+
+  const handleFetchWithRange = () => {
+    fetchTransactions(startDate, endDate)
   }
 
   return (
@@ -120,6 +156,8 @@ const InventoryClosingReport = () => {
         setStartDate={setStartDate}
         setEndDate={setEndDate}
         role={role}
+        handleDailyReport={handleDailyReport}
+        handleFetchWithRange={handleFetchWithRange}
       />
 
       {/* Table Display */}

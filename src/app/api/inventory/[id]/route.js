@@ -5,21 +5,19 @@ import { db } from '@/libs/db/db'
 export async function PUT(req, { params }) {
   const { id } = params
   try {
-    const { name, amount, price } = await req.json()
+    const { name, amount, price, fixedPrice } = await req.json()
 
-    if (!name || amount == null || price == null) {
-      return NextResponse.json({ error: 'All fields (name, amount, price) are required' }, { status: 400 })
+    if (!name || amount == null || price == null || fixedPrice == null) {
+      return NextResponse.json({ error: 'All fields (name, amount, price, fixedPrice) are required' }, { status: 400 })
     }
-
-    const unitPrice = parseFloat(price) / parseInt(amount, 10) // Recalculate unit price
 
     const updatedItem = await db.inventoryItem.update({
       where: { id },
       data: {
         name,
-        unitPrice,
         amount: parseInt(amount, 10),
-        price: parseFloat(price)
+        price: parseFloat(price),
+        fixedPrice: parseFloat(fixedPrice) // Update fixed price
       }
     })
 
